@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@google/genai": "^1.39.0",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/hands": "^0.4.1675469240",
     "firebase": "^12.8.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

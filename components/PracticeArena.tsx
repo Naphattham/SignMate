@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Level, FeedbackData } from '../types';
-import { GeminiLiveService } from '../services/geminiLiveService';
+import { MediaPipeService } from '../services/mediaPipeService';
 import { Button } from './Button';
 import { StarRating } from './StarRating';
 
@@ -13,14 +13,14 @@ interface PracticeArenaProps {
 export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onComplete }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackData>({ stars: 0, feedback: "Ready?", passed: false });
+  const [feedback, setFeedback] = useState<FeedbackData>({ stars: 0, feedback: "พร้อมแล้ว?", passed: false });
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const geminiService = useRef<GeminiLiveService | null>(null);
+  const mediaPipeService = useRef<MediaPipeService | null>(null);
 
   useEffect(() => {
-    geminiService.current = new GeminiLiveService();
+    mediaPipeService.current = new MediaPipeService();
     return () => {
-      geminiService.current?.stop();
+      mediaPipeService.current?.stop();
     };
   }, []);
 
@@ -54,25 +54,25 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
 
   const toggleDetection = async () => {
     if (isDetecting) {
-      geminiService.current?.stop();
+      mediaPipeService.current?.stop();
       setIsDetecting(false);
     } else {
       if (!videoRef.current) return;
       setIsDetecting(true);
-      setFeedback({ stars: 0, feedback: "Show me!", passed: false });
+      setFeedback({ stars: 0, feedback: "แสดงมือให้เห็น!", passed: false });
       try {
-        await geminiService.current?.connect(level.word, handleFeedback);
-        geminiService.current?.startStreaming(videoRef.current);
+        await mediaPipeService.current?.connect(level.word, handleFeedback);
+        mediaPipeService.current?.startStreaming(videoRef.current);
       } catch (e) {
         console.error(e);
         setIsDetecting(false);
-        setFeedback(prev => ({ ...prev, feedback: "Error connecting" }));
+        setFeedback(prev => ({ ...prev, feedback: "เกิดข้อผิดพลาดในการเชื่อมต่อ" }));
       }
     }
   };
 
   const handleFinish = () => {
-    geminiService.current?.stop();
+    mediaPipeService.current?.stop();
     onComplete(feedback.stars);
   };
 
