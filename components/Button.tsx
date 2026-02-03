@@ -13,7 +13,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   // 3D Button Styles: Bold colors, hard bottom shadow, translates down on click
-  const baseStyles = "px-6 py-3 rounded-2xl font-extrabold transition-all duration-150 transform active:translate-y-1 active:shadow-none border-b-4 focus:outline-none";
+  const baseStyles = "px-6 py-3 rounded-2xl font-extrabold transition-all duration-150 transform active:translate-y-1 active:shadow-none border-b-4 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0";
   
   const variants = {
     // Blue

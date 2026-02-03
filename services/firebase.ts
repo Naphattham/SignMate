@@ -2,7 +2,16 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getDatabase, ref, set, get, update, remove, onValue } from "firebase/database";
-import { getAuth } from "firebase/auth";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  User
+} from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -24,18 +33,24 @@ const analytics = getAnalytics(app);
 const database = getDatabase(app);
 const auth = getAuth(app);
 
+// Initialize Google Auth Provider
+const googleProvider = new GoogleAuthProvider();
+
 // Export Firebase services and utilities
 export { 
   app, 
   analytics, 
   database, 
   auth,
+  googleProvider,
   ref,
   set,
   get,
   update,
   remove,
-  onValue
+  onValue,
+  onAuthStateChanged,
+  type User
 };
 
 // Helper functions for database operations
@@ -94,5 +109,57 @@ export const dbHelpers = {
     return onValue(dataRef, (snapshot) => {
       callback(snapshot.val());
     });
+  }
+};
+
+// Authentication helper functions
+export const authHelpers = {
+  // Sign up with email and password
+  signUpWithEmail: async (email: string, password: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      return { success: true, user: userCredential.user };
+    } catch (error: any) {
+      console.error("Error signing up:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Sign in with email and password
+  signInWithEmail: async (email: string, password: string) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return { success: true, user: userCredential.user };
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Sign in with Google
+  signInWithGoogle: async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      return { success: true, user: result.user };
+    } catch (error: any) {
+      console.error("Error signing in with Google:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Sign out
+  signOutUser: async () => {
+    try {
+      await signOut(auth);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error signing out:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get current user
+  getCurrentUser: () => {
+    return auth.currentUser;
   }
 };

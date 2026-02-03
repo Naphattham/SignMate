@@ -1,22 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { AppView, Category, Level, UserProgress, Badge } from './types';
 import { CATEGORIES, BADGES } from './constants';
 import { Button } from './components/Button';
 import { PracticeArena } from './components/PracticeArena';
 import { StarRating } from './components/StarRating';
 import { Navbar } from './components/Navbar';
-import { LandingPage } from './components/LandingPage';
 import { Leaderboard } from './components/Leaderboard';
 import { Achievements } from './components/Achievements';
+import { authHelpers, dbHelpers, onAuthStateChanged, auth, type User } from './services/firebase';
+import Home from './src/pages/Home';
+import Login from './src/pages/Login';
 
 export default function App() {
-  const [view, setView] = useState<AppView>(AppView.HOME);
+  const navigate = useNavigate();
+  const [view, setView] = useState<AppView>(AppView.CATEGORIES);
   
   // Auth State
-  const [isSignup, setIsSignup] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // App Data State
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -28,85 +30,60 @@ export default function App() {
     totalScore: 0
   });
 
-  const isLoggedIn = !!username && view !== AppView.LOGIN && view !== AppView.HOME;
-
-  // --- Authentication Logic ---
-
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!username.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('signlingo_users') || '{}');
-
-    if (isSignup) {
-      if (users[username]) {
-        setError('Username already exists');
-        return;
-      }
+  const isLoggedIn = !!user;
+  
+  // --- Firebase Auth State Listener ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
       
-      users[username] = password;
-      localStorage.setItem('signlingo_users', JSON.stringify(users));
-      
-      const initialProgress: UserProgress = {
-        unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
-        stars: {},
-        badges: [],
-        totalScore: 0
-      };
-      localStorage.setItem(`signlingo_progress_${username}`, JSON.stringify(initialProgress));
-      
-      setUserProgress(initialProgress);
-      setView(AppView.CATEGORIES);
-    } else {
-      if (users[username] && users[username] === password) {
-        const savedProgress = localStorage.getItem(`signlingo_progress_${username}`);
-        if (savedProgress) {
-          setUserProgress(JSON.parse(savedProgress));
+      if (firebaseUser) {
+        // Load user progress from Firebase
+        const result = await dbHelpers.readData(`users/${firebaseUser.uid}/progress`);
+        if (result.success && result.data) {
+          setUserProgress(result.data);
         } else {
-          const initialProgress = {
+          // Initialize new user progress
+          const initialProgress: UserProgress = {
             unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
             stars: {},
             badges: [],
             totalScore: 0
           };
+          await dbHelpers.writeData(`users/${firebaseUser.uid}/progress`, initialProgress);
           setUserProgress(initialProgress);
         }
-        setView(AppView.CATEGORIES);
       } else {
-        setError('Invalid username or password');
+        // Reset to initial progress when logged out
+        setUserProgress({
+          unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
+          stars: {},
+          badges: [],
+          totalScore: 0
+        });
       }
-    }
-  };
+      
+      setLoading(false);
+    });
 
-  const handleLogout = () => {
-    setUsername('');
-    setPassword('');
-    setError('');
-    setIsSignup(false);
-    setView(AppView.HOME);
-  };
+    return () => unsubscribe();
+  }, []);
 
   // --- Navigation & Gameplay Logic ---
 
   const handleNavigate = (targetView: AppView) => {
-    if (targetView === AppView.CATEGORIES && !username) {
-      setView(AppView.LOGIN);
+    if (targetView === AppView.HOME) {
+      navigate('/');
+    } else if (targetView === AppView.LOGIN) {
+      navigate('/login');
     } else {
       setView(targetView);
     }
   };
 
-  const handleStartFromLanding = () => {
-    if (username) {
-      setView(AppView.CATEGORIES);
-    } else {
-      setView(AppView.LOGIN);
-    }
+  const handleLogout = async () => {
+    await authHelpers.signOutUser();
+    navigate('/');
   };
 
   const handleSelectCategory = (cat: Category) => {
@@ -121,125 +98,66 @@ export default function App() {
     }
   };
 
-  const handleLevelComplete = (stars: number) => {
+  const handleLevelComplete = async (stars: number) => {
     if (selectedLevel) {
       const currentLevelIndex = selectedCategory?.levels.findIndex(l => l.id === selectedLevel.id) ?? -1;
       const nextLevel = selectedCategory?.levels[currentLevelIndex + 1];
       
-      setUserProgress(prev => {
-        const newUnlocked = [...prev.unlockedLevelIds];
-        if (stars >= 2 && nextLevel && !newUnlocked.includes(nextLevel.id)) {
-          newUnlocked.push(nextLevel.id);
-        }
-        
-        // Update stars
-        const newStars = {
-          ...prev.stars,
-          [selectedLevel.id]: Math.max(prev.stars[selectedLevel.id] || 0, stars)
-        };
+      const prev = userProgress;
+      const newUnlocked = [...prev.unlockedLevelIds];
+      if (stars >= 2 && nextLevel && !newUnlocked.includes(nextLevel.id)) {
+        newUnlocked.push(nextLevel.id);
+      }
+      
+      // Update stars
+      const newStars = {
+        ...prev.stars,
+        [selectedLevel.id]: Math.max(prev.stars[selectedLevel.id] || 0, stars)
+      };
 
-        // Calculate Total Score (Stars * 100)
-        const newTotalScore = Object.values(newStars).reduce((acc, s) => acc + (s * 100), 0);
+      // Calculate Total Score (Stars * 100)
+      const newTotalScore = Object.values(newStars).reduce((acc: number, s: number) => acc + (s * 100), 0);
 
-        // Check for new Badges
-        const newBadges = [...(prev.badges || [])];
-        
-        // 1. First Win
-        if (stars >= 2 && !newBadges.includes('badge_first_win')) {
-           newBadges.push('badge_first_win');
-        }
-        // 2. Perfectionist
-        if (stars === 3 && !newBadges.includes('badge_3_stars')) {
-           newBadges.push('badge_3_stars');
-        }
-        // 3. Collector (3 unique levels completed)
-        const passedCount = Object.values(newStars).filter(s => s >= 2).length;
-        if (passedCount >= 3 && !newBadges.includes('badge_collector')) {
-           newBadges.push('badge_collector');
-        }
-        // 4. Master (10 stars total)
-        const totalStars = Object.values(newStars).reduce((a, b) => a + b, 0);
-        if (totalStars >= 10 && !newBadges.includes('badge_master')) {
-           newBadges.push('badge_master');
-        }
+      // Check for new Badges
+      const newBadges = [...(prev.badges || [])];
+      
+      // 1. First Win
+      if (stars >= 2 && !newBadges.includes('badge_first_win')) {
+         newBadges.push('badge_first_win');
+      }
+      // 2. Perfectionist
+      if (stars === 3 && !newBadges.includes('badge_3_stars')) {
+         newBadges.push('badge_3_stars');
+      }
+      // 3. Collector (3 unique levels completed)
+      const passedCount = Object.values(newStars).filter((s: number) => s >= 2).length;
+      if (passedCount >= 3 && !newBadges.includes('badge_collector')) {
+         newBadges.push('badge_collector');
+      }
+      // 4. Master (10 stars total)
+      const totalStars: number = (Object.values(newStars) as number[]).reduce((a, b) => a + b, 0);
+      if (totalStars >= 10 && !newBadges.includes('badge_master')) {
+         newBadges.push('badge_master');
+      }
 
-        const newProgress = {
-          unlockedLevelIds: newUnlocked,
-          stars: newStars,
-          badges: newBadges,
-          totalScore: newTotalScore
-        };
+      const newProgress = {
+        unlockedLevelIds: newUnlocked,
+        stars: newStars,
+        badges: newBadges,
+        totalScore: newTotalScore
+      };
 
-        localStorage.setItem(`signlingo_progress_${username}`, JSON.stringify(newProgress));
-        return newProgress;
-      });
+      // Save to Firebase
+      if (user) {
+        await dbHelpers.writeData(`users/${user.uid}/progress`, newProgress);
+      }
+      
+      setUserProgress(newProgress);
     }
     setView(AppView.LEVEL_SELECT);
   };
 
   // --- Render Helpers ---
-
-  const renderAuth = () => (
-    <div className="flex flex-col items-center justify-center flex-1 p-6 animate-fade-in-up">
-      <div className="w-full max-w-md bg-white p-8 rounded-[2rem] shadow-2xl border-b-8 border-gray-200">
-        <div className="text-center mb-6">
-          <span className="text-6xl">👋</span>
-        </div>
-        <h1 className="text-3xl font-black text-gray-800 mb-2 text-center">
-          {isSignup ? "New Player?" : "Welcome Back!"}
-        </h1>
-        <p className="text-gray-500 text-center mb-6 font-bold">
-          {isSignup ? "Create a profile to start winning." : "Log in to continue your streak."}
-        </p>
-        
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-4 font-bold text-center">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleAuth} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-extrabold text-gray-700 mb-1 ml-1 uppercase">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. SignMaster99"
-              className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-0 focus:outline-none text-gray-900 font-bold text-lg placeholder-gray-400 transition-colors"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-extrabold text-gray-700 mb-1 ml-1 uppercase">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-0 focus:outline-none text-gray-900 font-bold text-lg placeholder-gray-400 transition-colors"
-            />
-          </div>
-
-          <Button type="submit" fullWidth variant="primary" className="mt-2 text-lg">
-            {isSignup ? "Sign Up" : "Let's Go!"}
-          </Button>
-        </form>
-
-        <div className="mt-8 text-center">
-          <button 
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setError('');
-              setPassword('');
-            }}
-            className="text-purple-600 hover:text-purple-800 font-extrabold hover:underline focus:outline-none"
-          >
-            {isSignup ? "Wait, I have an account!" : "I need a new account!"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderCategories = () => {
     // Array of card colors for cycling
@@ -357,44 +275,65 @@ export default function App() {
 
   return (
     <div className="h-full w-full flex flex-col bg-purple-600 relative overflow-hidden">
-        {/* Background Patterns */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-20">
-            <div className="absolute top-10 left-10 w-64 h-64 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-            <div className="absolute top-10 right-10 w-64 h-64 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-32 left-20 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-        </div>
+      {/* Background Patterns */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-20">
+        <div className="absolute top-10 left-10 w-64 h-64 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+        <div className="absolute top-10 right-10 w-64 h-64 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-32 left-20 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+      </div>
 
       <Navbar 
-        isLoggedIn={!!username} 
-        username={username}
+        isLoggedIn={!!user} 
+        username={user?.email?.split('@')[0] || 'User'}
         onNavigate={handleNavigate}
         onLogout={handleLogout}
         currentView={view}
       />
-      
+
       <main className="flex-1 overflow-hidden flex flex-col relative z-10">
-        {view === AppView.HOME && <LandingPage onStart={handleStartFromLanding} isLoggedIn={!!username} />}
-        {view === AppView.LOGIN && renderAuth()}
-        {view === AppView.CATEGORIES && renderCategories()}
-        {view === AppView.LEVEL_SELECT && renderLevelSelect()}
-        {view === AppView.PRACTICE && selectedLevel && (
-          <PracticeArena 
-            level={selectedLevel} 
-            onBack={() => setView(AppView.LEVEL_SELECT)}
-            onComplete={handleLevelComplete}
+        <Routes>
+          {/* Home routes */}
+          <Route path="/" element={<Home user={user} />} />
+          <Route path="/home" element={<Home user={user} />} />
+          
+          {/* Login route */}
+          <Route path="/login" element={<Login user={user} />} />
+          
+          {/* App content routes */}
+          <Route
+            path="/*"
+            element={
+              loading ? (
+                <div className="flex items-center justify-center flex-1">
+                  <div className="text-white text-2xl font-bold">Loading...</div>
+                </div>
+              ) : (
+                <>
+                  {view === AppView.CATEGORIES && renderCategories()}
+                  {view === AppView.LEVEL_SELECT && renderLevelSelect()}
+                  {view === AppView.PRACTICE && selectedLevel && (
+                    <PracticeArena 
+                      level={selectedLevel} 
+                      onBack={() => setView(AppView.LEVEL_SELECT)}
+                      onComplete={handleLevelComplete}
+                    />
+                  )}
+                  {view === AppView.LEADERBOARD && (
+                    <Leaderboard currentUser={{
+                      id: user?.uid || '', 
+                      username: user?.email?.split('@')[0] || 'User', 
+                      score: userProgress.totalScore, 
+                      avatar: '😎' 
+                    }} />
+                  )}
+                  {view === AppView.ACHIEVEMENTS && (
+                    <Achievements unlockedBadgeIds={userProgress.badges || []} />
+                  )}
+                </>
+              )
+            }
           />
-        )}
-        {view === AppView.LEADERBOARD && (
-          <Leaderboard currentUser={{
-            id: username, 
-            username: username, 
-            score: userProgress.totalScore, 
-            avatar: '😎' 
-          }} />
-        )}
-        {view === AppView.ACHIEVEMENTS && (
-          <Achievements unlockedBadgeIds={userProgress.badges || []} />
-        )}
+        </Routes>
       </main>
     </div>
   );
