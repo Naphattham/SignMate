@@ -1,0 +1,8 @@
+{
+  "name": "SignLingo AI",
+  "description": "An interactive sign language practice platform powered by Gemini AI. Learn categories like Greetings and Basic Conversation with real-time feedback.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
