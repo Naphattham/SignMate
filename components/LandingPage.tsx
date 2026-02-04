@@ -38,25 +38,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, isLoggedIn })
         {/* Feature Cards - Floating */}
         <div className="grid md:grid-cols-3 gap-6 mt-16 text-left">
           {/* Card 1 */}
-          <div className="group p-6 bg-red-500 rounded-3xl border-b-8 border-red-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg">
+          {/* <div className="group p-6 bg-red-500 rounded-3xl border-b-8 border-red-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg">
             <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-4 group-hover:rotate-12 transition-transform">📸</div>
             <h3 className="text-xl font-extrabold mb-2">Camera On</h3>
             <p className="font-semibold opacity-90">We use your webcam to see your hand movements instantly.</p>
-          </div>
+          </div> */}
 
           {/* Card 2 */}
-          <div className="group p-6 bg-blue-500 rounded-3xl border-b-8 border-blue-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg md:-mt-8">
+          {/* <div className="group p-6 bg-blue-500 rounded-3xl border-b-8 border-blue-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg md:-mt-8">
             <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-4 group-hover:-rotate-12 transition-transform">🤖</div>
             <h3 className="text-xl font-extrabold mb-2">AI Judge</h3>
             <p className="font-semibold opacity-90">Powered by Gemini 2.0 to grade your signs with magic accuracy.</p>
-          </div>
+          </div> */}
 
           {/* Card 3 */}
-          <div className="group p-6 bg-green-500 rounded-3xl border-b-8 border-green-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg">
+          {/* <div className="group p-6 bg-green-500 rounded-3xl border-b-8 border-green-700 text-white transform hover:-translate-y-2 transition-transform shadow-lg">
             <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-4 group-hover:rotate-12 transition-transform">🏆</div>
             <h3 className="text-xl font-extrabold mb-2">Score High</h3>
             <p className="font-semibold opacity-90">Earn 3 stars on every word to climb the leaderboard!</p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

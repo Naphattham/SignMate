@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { UserProgress } from './types';
+import { CATEGORIES } from './constants';
 import { Navbar } from './components/Navbar';
+import LoadingScreen from './components/LoadingScreen';
 import { authHelpers, dbHelpers, onAuthStateChanged, auth, type User } from './services/firebase';
 import Home from './src/pages/Home';
 import Login from './src/pages/Login';
@@ -9,18 +11,21 @@ import Categories from './src/pages/Categories';
 import LevelSelect from './src/pages/LevelSelect';
 import Practice from './src/pages/Practice';
 import LeaderboardPage from './src/pages/LeaderboardPage';
-import AchievementsPage from './src/pages/AchievementsPage';
 
 export default function App() {
   const navigate = useNavigate();
   
+  // Get all level IDs from CATEGORIES
+  const allLevelIds = CATEGORIES.flatMap(cat => cat.levels.map(level => level.id));
+  
   // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
   // App Data State
   const [userProgress, setUserProgress] = useState<UserProgress>({
-    unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
+    unlockedLevelIds: allLevelIds,
     stars: {},
     badges: [],
     totalScore: 0
@@ -39,7 +44,7 @@ export default function App() {
         } else {
           // Initialize new user progress
           const initialProgress: UserProgress = {
-            unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
+            unlockedLevelIds: allLevelIds,
             stars: {},
             badges: [],
             totalScore: 0
@@ -50,7 +55,7 @@ export default function App() {
       } else {
         // Reset to initial progress when logged out
         setUserProgress({
-          unlockedLevelIds: ['lvl_hello', 'lvl_yes', 'lvl_who'],
+          unlockedLevelIds: allLevelIds,
           stars: {},
           badges: [],
           totalScore: 0
@@ -69,19 +74,25 @@ export default function App() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-purple-600 relative overflow-hidden">
-      {/* Background Patterns */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-20">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-        <div className="absolute top-10 right-10 w-64 h-64 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-32 left-20 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-      </div>
+    <>
+      {isPageLoading && <LoadingScreen />}
+      
+      <div className="h-full w-full flex flex-col bg-purple-600 relative overflow-hidden">
+        {/* Background Patterns */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-20">
+          <div className="absolute top-10 left-10 w-64 h-64 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+          <div className="absolute top-10 right-10 w-64 h-64 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-32 left-20 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+        </div>
 
-      <Navbar 
-        isLoggedIn={!!user} 
-        username={user?.email?.split('@')[0] || 'User'}
-        onLogout={handleLogout}
-      />
+        {!isPageLoading && (
+          <Navbar 
+            isLoggedIn={!!user} 
+            username={user?.email?.split('@')[0] || 'User'}
+            onLogout={handleLogout}
+            setIsPageLoading={setIsPageLoading}
+          />
+        )}
 
       <main className="flex-1 overflow-hidden flex flex-col relative z-10">
         {loading ? (
@@ -91,8 +102,8 @@ export default function App() {
         ) : (
           <Routes>
             {/* Home routes */}
-            <Route path="/" element={<Home user={user} />} />
-            <Route path="/home" element={<Home user={user} />} />
+            <Route path="/" element={<Home user={user} setIsPageLoading={setIsPageLoading} />} />
+            <Route path="/home" element={<Home user={user} setIsPageLoading={setIsPageLoading} />} />
             
             {/* Login route */}
             <Route path="/login" element={<Login user={user} />} />
@@ -111,12 +122,10 @@ export default function App() {
             
             {/* Leaderboard */}
             <Route path="/leaderboard" element={<LeaderboardPage user={user} userProgress={userProgress} />} />
-            
-            {/* Achievements */}
-            <Route path="/achievements" element={<AchievementsPage userProgress={userProgress} />} />
           </Routes>
         )}
       </main>
-    </div>
+      </div>
+    </>
   );
 }

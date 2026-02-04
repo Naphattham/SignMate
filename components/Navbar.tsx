@@ -1,16 +1,30 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './Button';
+import logo from '../src/assets/images/LOGO SignMate.png';
 
 interface NavbarProps {
   isLoggedIn: boolean;
   username?: string;
   onLogout: () => void;
+  setIsPageLoading?: (loading: boolean) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout, setIsPageLoading }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handlePlayClick = () => {
+    if (setIsPageLoading) {
+      setIsPageLoading(true);
+      setTimeout(() => {
+        navigate('/categories');
+        setIsPageLoading(false);
+      }, 3000);
+    } else {
+      navigate('/categories');
+    }
+  };
 
   const getLinkClass = (path: string) => 
     `px-4 py-2 rounded-xl font-bold transition-all ${location.pathname === path ? 'bg-white text-purple-600 shadow-sm' : 'text-white hover:bg-white/10'}`;
@@ -24,10 +38,10 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout }
           className="cursor-pointer flex items-center gap-2 group ml-2"
         >
           <div className="bg-white p-2 rounded-xl shadow-sm group-hover:rotate-12 transition-transform duration-300">
-            <span className="text-2xl">🤟</span>
+            <img src={logo} alt="SignMate Logo" className="w-8 h-8 object-contain" />
           </div>
           <span className="text-2xl font-black text-white tracking-tight drop-shadow-md hidden md:block">
-            SignLingo
+            SignMate
           </span>
         </div>
 
@@ -39,14 +53,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout }
           
           {isLoggedIn && (
             <>
-              <button onClick={() => navigate('/categories')} className={getLinkClass('/categories')}>
+              <button onClick={handlePlayClick} className={getLinkClass('/categories')}>
                 Play
               </button>
               <button onClick={() => navigate('/leaderboard')} className={getLinkClass('/leaderboard')}>
                 <span className="mr-1">🏆</span><span className="hidden sm:inline">Rank</span>
-              </button>
-              <button onClick={() => navigate('/achievements')} className={getLinkClass('/achievements')}>
-                <span className="mr-1">🎖️</span><span className="hidden sm:inline">Badges</span>
               </button>
             </>
           )}

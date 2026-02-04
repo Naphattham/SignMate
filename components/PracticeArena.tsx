@@ -171,7 +171,7 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
                 autoPlay 
                 playsInline 
                 muted 
-                className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-300 ${isDetecting ? 'opacity-100' : 'opacity-80 grayscale'}`}
+                className="w-full h-full object-cover transform scale-x-[-1]"
               />
             )}
             
@@ -184,10 +184,10 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
             )}
 
             {/* Results Overlay */}
-            <div className="absolute bottom-6 inset-x-6">
-                <div className={`bg-white/95 backdrop-blur-xl p-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2 transition-all duration-300 ${feedback.passed ? 'border-4 border-green-400 scale-105' : 'border border-gray-200'}`}>
+            <div className="absolute top-4 right-4">
+                <div className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all duration-300 ${feedback.passed ? 'scale-105' : ''}`}>
                     <StarRating stars={feedback.stars} size="lg" />
-                    <p className={`text-xl font-black text-center uppercase tracking-tight ${feedback.passed ? 'text-green-600' : 'text-gray-500'}`}>
+                    <p className={`text-xl font-black text-center uppercase tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${feedback.passed ? 'text-green-400' : 'text-white'}`}>
                         {feedback.feedback}
                     </p>
                 </div>

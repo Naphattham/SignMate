@@ -1,0 +1,111 @@
+/* นำเข้าฟอนต์ที่รูปทรงคล้ายต้นฉบับที่สุด */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap');
+
+/* Container หลัก */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  background-color: #fff;
+  font-family: 'Fredoka', sans-serif; /* เรียกใช้ฟอนต์ */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 99999; /* สูงกว่า Navbar (z-50) */
+}
+
+/* --- ส่วนจัดการตัวหนังสือ SignMate --- */
+.title-container {
+  display: flex;
+  flex-direction: column; /* เปลี่ยนเป็นแนวตั้ง */
+  align-items: flex-start; /* เริ่มต้นชิดซ้าย */
+  justify-content: center;
+  margin-top: 20px;
+  margin-bottom: 40px;
+  /* ใช้ width: fit-content เพื่อให้กล่องคลุมพอดีตัวหนังสือ จะได้จัดกลางหน้าจอได้ง่าย */
+  width: fit-content; 
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.text-sign {
+  font-size: 80px; /* ปรับขนาดให้ใหญ่ขึ้นตามรูป */
+  line-height: 0.8; /* ลดความสูงบรรทัด */
+  color: #DC5F58;
+  -webkit-text-stroke: 2.5px black;
+  paint-order: stroke fill;
+  
+  /* สำคัญ: Z-index เพื่อให้แน่ใจว่าถ้าเกยกัน อันไหนจะอยู่บน/ล่าง (ในรูป Sign ดูเหมือนจะลอยอยู่) */
+  position: relative; 
+  z-index: 2;
+}
+
+.text-mate {
+  font-size: 80px; 
+  line-height: 0.8;
+  color: #F3CE9E;
+  font-weight: 600;
+  
+  /* --- ส่วนจัดตำแหน่งสำคัญ --- */
+  margin-top: -10px; /* ดึงขึ้นไปหา Sign (ปรับเลขนี้เพื่อให้ชิดตามต้องการ) */
+  margin-left: 115px; /* ดันไปทางขวาเพื่อให้ตัว M ตรงกับตัว n (ปรับเลขนี้ถ้ายังไม่ตรง) */
+  
+  position: relative;
+  z-index: 1;
+}
+
+/* --- ส่วนอื่นๆ (Logo & Progress) --- */
+.logo-box {
+  /* ใส่ style กล่องโลโก้ตามเดิม */
+  width: 180px;
+  height: 180px;
+  border: 2px solid #000;
+  border-radius: 35px;
+  background-color: #F6F8FA;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-image {
+  width: 80%; /* ปรับขนาดรูปมือตามความเหมาะสม */
+  height: auto;
+  object-fit: contain;
+}
+
+.loading-text {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 400;
+}
+
+.progress-container {
+  width: 280px;
+  height: 30px;
+  border: 1.5px solid #333; /* ขอบแถบโหลด */
+  border-radius: 15px;
+  padding: 3px;
+  box-sizing: border-box;
+  background-color: transparent;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #E6A592; /* สีชมพูตุ่นๆ */
+  border-radius: 12px;
+  width: 0%;
+  /* Animation: ชื่อ duration รูปแบบ delay */
+  animation: loadingAnimation 3s ease-in-out forwards;
+}
+
+/* Keyframes สำหรับจำลองการโหลด */
+@keyframes loadingAnimation {
+  0% { width: 5%; }
+  40% { width: 50%; }
+  70% { width: 80%; }
+  100% { width: 100%; }
+}
