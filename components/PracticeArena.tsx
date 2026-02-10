@@ -84,7 +84,7 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
   }
 
   return (
-    <div className="flex flex-col h-full max-w-7xl mx-auto p-4 gap-6">
+    <div className="flex flex-col h-screen w-[1280px] mx-auto p-4 gap-6">
       
       {/* Game Header */}
       <div className="flex justify-between items-center bg-white p-4 rounded-3xl shadow-lg border-b-8 border-gray-200 z-10">

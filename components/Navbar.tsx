@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './Button';
-import logo from '../src/assets/images/LOGO SignMate.png';
+import logo from '/src/assets/images/LOGO_SignMate.png';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -15,15 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout, 
   const location = useLocation();
 
   const handlePlayClick = () => {
-    if (setIsPageLoading) {
-      setIsPageLoading(true);
-      setTimeout(() => {
-        navigate('/categories');
-        setIsPageLoading(false);
-      }, 3000);
-    } else {
-      navigate('/categories');
-    }
+    navigate('/categories');
   };
 
   const getLinkClass = (path: string) => 
@@ -65,15 +57,13 @@ export const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, username, onLogout, 
           <div className="h-6 w-px bg-white/20 mx-2"></div>
 
           {isLoggedIn ? (
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex flex-col items-end leading-tight">
-                 <span className="text-white font-bold text-sm">{username}</span>
-                 <span className="text-purple-200 text-xs font-bold">Player</span>
-              </div>
-              <Button onClick={onLogout} variant="danger" className="py-2 px-4 text-sm">
-                Exit
-              </Button>
-            </div>
+            <button 
+              onClick={() => navigate('/profile')} 
+              className="hidden lg:flex flex-col items-end leading-tight hover:bg-white/10 px-3 py-2 rounded-xl transition-all cursor-pointer"
+            >
+               <span className="text-white font-bold text-sm">{username}</span>
+               <span className="text-purple-200 text-xs font-bold">Player</span>
+            </button>
           ) : (
             <div className="flex items-center gap-2">
               <Button 

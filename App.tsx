@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProgress } from './types';
 import { CATEGORIES } from './constants';
-import { Navbar } from './components/Navbar';
 import LoadingScreen from './components/LoadingScreen';
 import { authHelpers, dbHelpers, onAuthStateChanged, auth, type User } from './services/firebase';
 import Home from './src/pages/Home';
@@ -11,9 +10,11 @@ import Categories from './src/pages/Categories';
 import LevelSelect from './src/pages/LevelSelect';
 import Practice from './src/pages/Practice';
 import LeaderboardPage from './src/pages/LeaderboardPage';
+import Profile from './src/pages/Profile';
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Get all level IDs from CATEGORIES
   const allLevelIds = CATEGORIES.flatMap(cat => cat.levels.map(level => level.id));
@@ -33,6 +34,10 @@ export default function App() {
   
   // --- Firebase Auth State Listener ---
   useEffect(() => {
+    // Set minimum loading time to 3 seconds to show animation
+    const minLoadingTime = 3000;
+    const startTime = Date.now();
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       
@@ -62,7 +67,13 @@ export default function App() {
         });
       }
       
-      setLoading(false);
+      // Ensure loading screen shows for at least 3 seconds
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+      
+      setTimeout(() => {
+        setLoading(false);
+      }, remainingTime);
     });
 
     return () => unsubscribe();
@@ -71,6 +82,12 @@ export default function App() {
   const handleLogout = async () => {
     await authHelpers.signOutUser();
     navigate('/');
+  };
+
+  const handleUpdateUsername = async (newUsername: string) => {
+    if (user) {
+      await dbHelpers.writeData(`users/${user.uid}/username`, newUsername);
+    }
   };
 
   return (
@@ -85,20 +102,9 @@ export default function App() {
           <div className="absolute -bottom-32 left-20 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
         </div>
 
-        {!isPageLoading && (
-          <Navbar 
-            isLoggedIn={!!user} 
-            username={user?.email?.split('@')[0] || 'User'}
-            onLogout={handleLogout}
-            setIsPageLoading={setIsPageLoading}
-          />
-        )}
-
-      <main className="flex-1 overflow-hidden flex flex-col relative z-10">
+      <main className="flex-1 overflow-auto flex flex-col relative z-10">
         {loading ? (
-          <div className="flex items-center justify-center flex-1">
-            <div className="text-white text-2xl font-bold">Loading...</div>
-          </div>
+          <LoadingScreen />
         ) : (
           <Routes>
             {/* Home routes */}
@@ -109,7 +115,7 @@ export default function App() {
             <Route path="/login" element={<Login user={user} />} />
             
             {/* Categories Dashboard */}
-            <Route path="/categories" element={<Categories userProgress={userProgress} />} />
+            <Route path="/categories" element={<Categories userProgress={userProgress} user={user} onLogout={handleLogout} />} />
             
             {/* Level Select for a category */}
             <Route path="/category/:categoryId" element={<LevelSelect userProgress={userProgress} />} />
@@ -122,6 +128,12 @@ export default function App() {
             
             {/* Leaderboard */}
             <Route path="/leaderboard" element={<LeaderboardPage user={user} userProgress={userProgress} />} />
+            
+            {/* Profile */}
+            <Route 
+              path="/profile" 
+              element={<Profile username={user?.email?.split('@')[0] || 'User'} onUpdateUsername={handleUpdateUsername} onLogout={handleLogout} />} 
+            />
           </Routes>
         )}
       </main>

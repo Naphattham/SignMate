@@ -4,7 +4,7 @@ export const CATEGORIES: Category[] = [
   {
     id: 'cat_greetings',
     title: 'Greetings',
-    thaiTitle: 'การทักทาย',
+    thaiTitle: 'บทสนทนาทั่วไป',
     description: 'Basic ways to say hello and goodbye.',
     icon: '👋',
     levels: [
@@ -16,7 +16,7 @@ export const CATEGORIES: Category[] = [
   {
     id: 'cat_basic',
     title: 'Basic Conversation',
-    thaiTitle: 'บทสนทนาพื้นฐาน',
+    thaiTitle: 'อาการเจ็บป่วย',
     description: 'Essential words for daily chat.',
     icon: '💬',
     levels: [
@@ -28,9 +28,20 @@ export const CATEGORIES: Category[] = [
   {
     id: 'cat_questions',
     title: 'Questions',
-    thaiTitle: 'คำถาม',
+    thaiTitle: 'คำถาม-คำตอบ',
     description: 'Who, what, where, when, why.',
     icon: '❓',
+    levels: [
+      { id: 'lvl_who', word: 'Who', thaiWord: 'ใคร', description: 'Draw a circle with finger around mouth.', difficulty: 'Medium', videoPlaceholderColor: 'bg-indigo-500' },
+      { id: 'lvl_where', word: 'Where', thaiWord: 'ที่ไหน', description: 'Shake index finger side to side.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
+    ]
+  },
+  {
+    id: 'cat_emotional',
+    title: 'Emotional',
+    thaiTitle: 'อารมณ์',
+    description: 'Expressing feelings and emotions.',
+    icon: '😊',
     levels: [
       { id: 'lvl_who', word: 'Who', thaiWord: 'ใคร', description: 'Draw a circle with finger around mouth.', difficulty: 'Medium', videoPlaceholderColor: 'bg-indigo-500' },
       { id: 'lvl_where', word: 'Where', thaiWord: 'ที่ไหน', description: 'Shake index finger side to side.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
@@ -51,4 +62,9 @@ export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
   { id: 'u3', username: 'TechSigner', score: 180, avatar: '🤖' },
   { id: 'u4', username: 'NewbieJohn', score: 120, avatar: '🐼' },
   { id: 'u5', username: 'AliceWonder', score: 95, avatar: '🐰' },
+  { id: 'u6', username: 'QuickLearner', score: 85, avatar: '🐯' },
+  { id: 'u7', username: 'SignMaster88', score: 75, avatar: '🐨' },
+  { id: 'u8', username: 'HandTalker', score: 65, avatar: '🐸' },
+  { id: 'u9', username: 'GestureKing', score: 55, avatar: '🐷' },
+  { id: 'u10', username: 'SignBeginner', score: 45, avatar: '🐵' },
 ];

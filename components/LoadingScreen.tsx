@@ -1,6 +1,6 @@
 import React from 'react';
 import './LoadingScreen.css';
-import logo from '../src/assets/images/LOGO SignMate.png';
+import logo from '/src/assets/images/LOGO_SignMate.png';
 
 const LoadingScreen: React.FC = () => {
   return (

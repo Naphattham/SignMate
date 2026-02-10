@@ -12,18 +12,14 @@ export default function Home({ user, setIsPageLoading }: HomeProps) {
   const navigate = useNavigate();
 
   const handleStart = () => {
-    // ถ้ายังไม่ได้ login ให้ไปหน้า login ทันที ไม่ต้องโหลด
+    // ถ้ายังไม่ได้ login ให้ไปหน้า login ทันที
     if (!user) {
       navigate('/login');
       return;
     }
     
-    // ถ้า login แล้ว แสดง Loading 3 วินาที ตาม Animation
-    setIsPageLoading(true);
-    setTimeout(() => {
-      navigate('/categories');
-      setIsPageLoading(false);
-    }, 3000);
+    // ถ้า login แล้ว ไปที่หน้า categories ทันที
+    navigate('/categories');
   };
 
   return (
