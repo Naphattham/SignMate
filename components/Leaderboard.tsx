@@ -1,9 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, LogOut } from 'lucide-react';
 import { LeaderboardEntry } from '../types';
 import { MOCK_LEADERBOARD } from '../constants';
-import logoSignMate from '../src/assets/images/LOGO_SignMate.png';
+import { Navbar } from './Navbar';
 
 interface LeaderboardProps {
   currentUser: LeaderboardEntry;
@@ -11,28 +10,10 @@ interface LeaderboardProps {
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
   const navigate = useNavigate();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   // Mock data for demo
   const user = { email: currentUser.username + '@example.com' };
   const totalStars = currentUser.score;
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleLogout = () => {
-    // Add your logout logic here
-    navigate('/login');
-  };
 
   // 1. Logic รวมข้อมูล Mock กับ User ปัจจุบัน
   const allPlayers = [...MOCK_LEADERBOARD];
@@ -56,7 +37,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
   // ---------------------------------------------
   const renderPodiumPlace = (player: LeaderboardEntry, position: number) => {
     // กำหนดความสูงและลำดับการจัดวาง (2, 1, 3)
-    let heightClass = 'h-28';
+    let heightClass = 'h-20';
     let orderClass = 'order-3';
     let zIndex = 'z-0';
     let label = '3';
@@ -65,44 +46,44 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
     const showCrown = position === 1;
 
     if (position === 1) {
-      heightClass = 'h-40';
+      heightClass = 'h-28';
       orderClass = 'order-2';
       zIndex = 'z-10';
       label = '1';
     } else if (position === 2) {
-      heightClass = 'h-32';
+      heightClass = 'h-24';
       orderClass = 'order-1';
       zIndex = 'z-0';
       label = '2';
     }
 
     return (
-      <div key={player.id} className={`flex flex-col items-center ${orderClass} ${zIndex} -mx-2`}>
+      <div key={player.id} className={`flex flex-col items-center ${orderClass} ${zIndex} -mx-1`}>
         {/* Avatar Section */}
-        <div className="relative mb-3 flex flex-col items-center">
+        <div className="relative mb-2 flex flex-col items-center">
           {showCrown && (
-            <div className="absolute -top-10 text-4xl animate-bounce">
+            <div className="absolute -top-8 text-3xl animate-bounce">
               👑
             </div>
           )}
           
           <div className={`
-            w-20 h-20 rounded-full border-4 flex items-center justify-center overflow-hidden bg-white
-            ${position === 1 ? 'border-yellow-400 w-24 h-24' : 'border-[#A67C52]'}
+            w-16 h-16 rounded-full border-3 flex items-center justify-center overflow-hidden bg-white
+            ${position === 1 ? 'border-yellow-400 w-20 h-20' : 'border-[#A67C52]'}
           `}>
             {/* ใส่รูป Avatar หรือ Placeholder */}
             {player.avatar ? (
-              <span className="text-3xl">{player.avatar}</span> 
+              <span className="text-2xl">{player.avatar}</span> 
             ) : (
               <div className="w-full h-full bg-gray-200" />
             )}
           </div>
           
-          <div className="mt-2 text-center leading-tight">
-            <div className="font-bold text-gray-800 text-sm font-mono uppercase tracking-tighter">
+          <div className="mt-1 text-center leading-tight">
+            <div className="font-bold text-gray-800 text-xs font-mono uppercase tracking-tighter">
               {player.username}
             </div>
-            <div className="font-bold text-gray-600 text-xs font-mono">
+            <div className="font-bold text-gray-600 text-[10px] font-mono">
               {player.score} PTS
             </div>
           </div>
@@ -110,17 +91,17 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
 
         {/* The Block (แท่นยืน) */}
         <div className={`
-          ${heightClass} w-28 sm:w-32
-          bg-[#B07656] border-b-[8px] border-[#8B5A36]
+          ${heightClass} w-20 sm:w-24
+          bg-[#B07656] border-b-[6px] border-[#8B5A36]
           shadow-lg rounded-t-lg
           flex items-center justify-center
           relative
         `}>
           {/* Top highlight of the block for 3D effect */}
-          <div className="absolute top-0 w-full h-2 bg-[#C68E6D] rounded-t-lg" />
+          <div className="absolute top-0 w-full h-1.5 bg-[#C68E6D] rounded-t-lg" />
           
           {/* Number on the block */}
-          <span className="text-white font-black text-5xl drop-shadow-md font-mono mt-2">
+          <span className="text-white font-black text-4xl drop-shadow-md font-mono mt-1">
             {label}
           </span>
         </div>
@@ -133,109 +114,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
       {/* Main Card Container */}
       <div className="relative bg-[#FFF9F0] w-full max-w-7xl aspect-[16/10] md:aspect-video rounded-[3rem] border-2 border-black shadow-2xl p-8 md:p-12 overflow-hidden flex flex-col">
         
-        <header className="relative flex justify-between items-center mb-4">
-          {/* ปุ่มย้อนกลับ (ซ้าย) */}
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center justify-center w-10 h-10 bg-black rounded-full hover:scale-105 transition-transform shadow-md"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="white" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-          </button>
-
-          {/* Logo Title - อยู่ตรงกลาง */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-            <div className="relative">
-              <img src={logoSignMate} alt="SignMate Logo" className="w-8 h-8" />
-              <div className="absolute -top-1 -right-1 text-red-500 text-[10px]">❤️</div>
-            </div>
-            {/* ใช้ Font ที่มีความหนาและดู Pixel นิดๆ ถ้ามี */}
-            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight" style={{ fontFamily: 'monospace, sans-serif' }}>
-              SignMate
-            </h1>
-          </div>
-
-          {/* Icon ด้านขวา (ถ้วยรางวัล + โปรไฟล์) */}
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => navigate('/leaderboard')}
-              className="flex flex-col items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-            >
-              <Trophy className="w-6 h-6 text-yellow-600 mb-0.5" />
-              <div className="h-0.5 w-6 bg-yellow-700 rounded-full"></div>
-              <span className="text-[10px] font-bold text-gray-800 mt-0.5">{totalStars}</span>
-            </button>
-            <div className="h-6 w-[2px] bg-gray-300 mx-1"></div>
-            <div className="relative" ref={menuRef}>
-              {/* --- ปุ่ม Trigger (รูป Profile) --- */}
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 border-2 border-transparent hover:border-red-400 transition-all focus:outline-none"
-              >
-                {/* Avatar Image */}
-                <img 
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=User" 
-                  alt="User Avatar" 
-                  className="w-8 h-8 rounded-full"
-                />
-              </button>
-              
-              {/* --- Dropdown Menu --- */}
-              {showProfileMenu && (
-                <div 
-                  className="absolute right-0 mt-3 w-64 bg-[#F08E88] rounded-[1.2rem] shadow-xl p-3 z-50 animate-fade-in-up origin-top-right border-2 border-white/20"
-                  style={{ fontFamily: '"VT323", monospace' }}
-                >
-                  {/* Header: HI, USER! */}
-                  <div className="mb-3 pl-1">
-                    <h3 className="text-white text-lg tracking-widest uppercase drop-shadow-md">
-                      HI, {user?.email?.split('@')[0].toUpperCase() || 'USER'}!
-                    </h3>
-                  </div>
-
-                  {/* Menu Items */}
-                  <div className="flex flex-col gap-2">
-                    
-                    {/* Item 1: Profile */}
-                    <button 
-                      onClick={() => navigate('/profile')}
-                      className="flex items-center gap-3 group cursor-pointer hover:bg-white/10 p-2 rounded-lg transition-colors w-full text-left"
-                    >
-                      <div className="w-7 h-7 bg-[#FACC15] rounded-full flex items-center justify-center border-2 border-[#Eab308]">
-                        <img 
-                          src="https://api.dicebear.com/7.x/avataaars/svg?seed=User" 
-                          alt="Profile" 
-                          className="w-6 h-6 rounded-full"
-                        />
-                      </div>
-                      <span className="text-black text-xl uppercase tracking-wider group-hover:text-white transition-colors">
-                        Profile
-                      </span>
-                    </button>
-
-                    {/* Item 2: Log Out */}
-                    <button 
-                      onClick={handleLogout}
-                      className="flex items-center gap-3 group w-full text-left hover:bg-white/10 p-2 rounded-lg transition-colors"
-                    >
-                      <div className="w-7 h-7 flex items-center justify-center">
-                        <LogOut className="w-6 h-6 text-black group-hover:text-white transition-colors stroke-[2.5]" />
-                      </div>
-                      <span className="text-black text-xl uppercase tracking-wider group-hover:text-white transition-colors">
-                        Log Out
-                      </span>
-                    </button>
-
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+        <Navbar 
+          totalStars={totalStars}
+          user={{ email: user.email } as any}
+          showBackButton={true}
+          onBack={() => navigate(-1)}
+        />
 
         {/* --- Podium Section --- */}
-        <div className="flex items-end justify-center mt-4 mb-6 pb-2">
+        <div className="flex items-end justify-center mt-2 mb-4 pb-1">
           {/* เรียงลำดับการ Render ให้แสดงผลถูกต้อง: ที่ 2, ที่ 1, ที่ 3 */}
           {top3.length > 1 && renderPodiumPlace(top3[1], 2)}
           {top3.length > 0 && renderPodiumPlace(top3[0], 1)}
