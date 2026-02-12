@@ -74,7 +74,7 @@ export default function LevelSelect({ userProgress, user, onLogout }: LevelSelec
 
           {/* Title Center */}
           <div className="mx-auto flex items-center gap-3">
-            <span className="text-4xl drop-shadow-md">{selectedCategory.icon}</span>
+            <img src={selectedCategory.icon} alt={selectedCategory.thaiTitle} className="w-16 h-16 object-contain drop-shadow-md" />
             <h2 className="text-3xl font-black text-gray-800">{selectedCategory.thaiTitle}</h2>
           </div>
         </div>
@@ -90,47 +90,45 @@ export default function LevelSelect({ userProgress, user, onLogout }: LevelSelec
                 key={level.id}
                 onClick={() => isUnlocked && handleSelectLevel(level.id)}
                 className={`
-          relative flex items-center justify-between px-6 py-5 rounded-2xl border-b-[6px] transition-all duration-100 select-none
+          relative flex items-center justify-between px-10 py-8 rounded-[20px] transition-all duration-150 select-none
           ${isUnlocked
-                    ? "bg-[#FCD04E] border-[#E57A94] cursor-pointer active:border-b-0 active:translate-y-[6px]"
-                    : "bg-gray-300 border-gray-400 cursor-not-allowed opacity-80"
+                    ? "bg-[#F4CF4D] shadow-[0_8px_0_#EA6AA8] cursor-pointer active:shadow-none active:translate-y-[8px]"
+                    : "bg-[#E5E5E5] shadow-[0_8px_0_#C0C0C0] cursor-not-allowed text-gray-400"
                   }
         `}
               >
                 {/* Left: Text */}
                 <div className="flex flex-col">
-                  {/* หมายเหตุ: ต้องใช้ฟอนต์ Pixel เพื่อให้เหมือนรูปเป๊ะๆ */}
-                  <h3 className="text-2xl font-black text-[#1A1A1A] tracking-tight truncate">
+                  {/* ใช้ font-pixel และสีดำสนิท */}
+                  <h3 className="font-pixel text-3xl md:text-4xl text-black tracking-wide">
                     {level.thaiWord}
                   </h3>
                 </div>
 
-                {/* Right: Stars or Lock */}
-                <div className="flex items-center">
+                {/* Right: Stars */}
+                <div className="flex items-center gap-2">
                   {isUnlocked ? (
-                    <div className="flex gap-1">
-                      {[1, 2, 3].map((starIndex) => (
-                        <svg
-                          key={starIndex}
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className={`w-8 h-8 drop-shadow-sm ${starIndex <= stars
-                            ? "text-white" // ดาวที่ได้แล้วเป็นสีขาว
-                            : "text-white/40" // ดาวที่ยังไม่ได้จางลง
-                            }`}
-                        >
-                          {/* ใช้ Path ทรงดาวที่มนขึ้นเล็กน้อยเพื่อให้ดูนุ่มนวลเหมือนในภาพ */}
-                          <path
-                            fillRule="evenodd"
-                            d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      ))}
-                    </div>
+                    [1, 2, 3].map((starIndex) => (
+                      <svg
+                        key={starIndex}
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className={`w-10 h-10 ${starIndex <= stars
+                          ? "text-white" // ดาวที่ได้แล้วเป็นสีขาว
+                          : "text-white/40" // ดาวที่ยังไม่ได้จางลง
+                          }`}
+                      >
+                        {/* Path ทรงดาวแบบมน (Rounded Star) ให้ดูนุ่มนวลเหมือนในภาพ */}
+                        <path
+                          fillRule="evenodd"
+                          d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    ))
                   ) : (
-                    <span className="text-2xl opacity-50">🔒</span>
+                    <span className="text-4xl opacity-40">🔒</span>
                   )}
                 </div>
               </div>

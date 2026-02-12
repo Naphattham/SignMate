@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, LogOut } from 'lucide-react';
-import { type User as FirebaseUser } from '../services/firebase';
-import logoSignMate from '../src/assets/images/LOGO_SignMate.png';
+import { type User as FirebaseUser, dbHelpers } from '../services/firebase';
+import logoSignMate from '/src/assets/images/LOGO_SignMate.png';
+import trophyImage from '/src/assets/images/Trophy.png';
 import ProfileCard from './ProfileCard';
 
 interface NavbarProps {
@@ -23,47 +24,57 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
-  const [username, setUsername] = useState(user?.email?.split('@')[0].toUpperCase() || 'USER');
+  const [username, setUsername] = useState('USER');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved data from localStorage
+  // Load user profile from Firebase
   useEffect(() => {
-    const loadUserData = () => {
-      if (user?.uid) {
-        const savedAvatar = localStorage.getItem(`avatar_${user.uid}`);
-        const savedUsername = localStorage.getItem(`username_${user.uid}`);
-        
-        if (savedAvatar) {
-          setAvatarUrl(savedAvatar);
+    const loadUserProfile = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const result = await dbHelpers.readData(`users/${user.uid}/profile`);
+        if (result.success && result.data) {
+          setUsername(result.data.username || user?.email?.split('@')[0].toUpperCase() || 'USER');
+          setAvatarUrl(result.data.avatar || '');
+        } else {
+          // Use email as fallback if no profile exists
+          setUsername(user?.email?.split('@')[0].toUpperCase() || 'USER');
         }
-        if (savedUsername) {
-          setUsername(savedUsername);
-        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        setUsername(user?.email?.split('@')[0].toUpperCase() || 'USER');
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadUserData();
+    loadUserProfile();
 
-    // Listen for custom event when avatar/username is updated
-    const handleAvatarUpdate = (e: Event) => {
+    // Listen for profile updates
+    const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.userId === user?.uid) {
-        loadUserData();
+        loadUserProfile();
       }
     };
 
-    window.addEventListener('avatarUpdated', handleAvatarUpdate);
+    window.addEventListener('profileUpdated', handleProfileUpdate);
 
     return () => {
-      window.removeEventListener('avatarUpdated', handleAvatarUpdate);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, [user?.uid]);
+  }, [user?.uid, user?.email]);
 
   // Get avatar URL with fallback
   const getAvatarUrl = () => {
-    if (avatarUrl) return avatarUrl; // Custom uploaded image
+    if (avatarUrl) return avatarUrl; // Custom uploaded image from Firebase
     if (user?.photoURL) return user.photoURL; // Google photo
     if (user?.email) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`; // Generated
     return 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'; // Default
@@ -89,21 +100,33 @@ export const Navbar: React.FC<NavbarProps> = ({
     navigate('/');
   };
 
-  const handleSave = () => {
-    if (user?.uid) {
-      // Save to localStorage
-      if (avatarUrl) {
-        localStorage.setItem(`avatar_${user.uid}`, avatarUrl);
-      }
-      localStorage.setItem(`username_${user.uid}`, username);
+  const handleSave = async () => {
+    if (!user?.uid) return;
+
+    try {
+      // Save to Firebase
+      const profileData = {
+        username: username,
+        avatar: avatarUrl || '',
+        lastUpdated: new Date().toISOString()
+      };
+
+      const result = await dbHelpers.updateData(`users/${user.uid}/profile`, profileData);
       
-      // Dispatch custom event to notify all Navbar instances
-      const event = new CustomEvent('avatarUpdated', {
-        detail: { userId: user.uid }
-      });
-      window.dispatchEvent(event);
+      if (result.success) {
+        // Dispatch event to notify other components
+        const event = new CustomEvent('profileUpdated', {
+          detail: { userId: user.uid }
+        });
+        window.dispatchEvent(event);
+        
+        setShowProfileEdit(false);
+      } else {
+        console.error('Failed to save profile:', result.error);
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
     }
-    setShowProfileEdit(false);
   };
 
   // Close menu when clicking outside
@@ -138,23 +161,51 @@ export const Navbar: React.FC<NavbarProps> = ({
       />
     )}
     
-    <header className="relative flex justify-end items-center mb-12 z-40">
+    <header className="relative flex justify-end items-center mb-6 z-40">
       {/* Back Button (Optional) */}
       {showBackButton && (
         <button
           onClick={onBack}
-          className="absolute left-0 flex items-center justify-center w-12 h-12 bg-black rounded-full hover:scale-105 transition-transform shadow-md"
+          className="
+            group
+            absolute left-0
+            flex items-center gap-3
+            px-5 py-2
+            bg-[#d1bbf9] 
+            rounded-2xl 
+            shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] 
+            hover:translate-x-[2px] hover:translate-y-[2px] 
+            hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] 
+            active:translate-x-[5px] active:translate-y-[5px] 
+            active:shadow-none
+            transition-all duration-200
+          "
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="white" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
+          {/* Icon Wrapper (Black Circle) */}
+          <div className="flex items-center justify-center w-10 h-10 bg-black rounded-xl">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={4} 
+              stroke="#d1bbf9"
+              className="w-6 h-6"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+          </div>
+
+          {/* Text */}
+          <span className="text-black font-bold text-lg tracking-wide pt-1">
+            ย้อนกลับ
+          </span>
         </button>
       )}
 
       {/* Logo Title - อยู่ตรงกลาง */}
-      <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
+      <div className="absolute left-1/2 transform -translate-x-1/2 flex items-end gap-3">
         <div className="relative">
-          <img src={logoSignMate} alt="SignMate Logo" className="w-12 h-12" />
+          <img src={logoSignMate} alt="SignMate Logo" className="w-16 h-16" />
         </div>
         <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight" style={{ fontFamily: 'monospace, sans-serif' }}>
           SignMate
@@ -167,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => navigate('/leaderboard')}
           className="flex flex-col items-center justify-center cursor-pointer hover:scale-105 transition-transform"
         >
-          <Trophy className="w-8 h-8 text-yellow-600" />
+          <img src={trophyImage} alt="Trophy" className="w-8 h-8" />
           {/* <div className="h-1 w-8 bg-yellow-700 rounded-full"></div> */}
           {/* <span className="text-xs font-bold text-gray-800 mt-1">{totalStars}</span> */}
         </button>
@@ -183,11 +234,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               src={displayAvatar} 
               alt="User Avatar" 
               className="w-full h-full rounded-full object-cover"
-              onError={(e) => {
-                // Fallback to generated avatar if image fails to load
-                const target = e.target as HTMLImageElement;
-                target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'User'}`;
-              }}
             />
           </button>
           
@@ -199,10 +245,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               {!showProfileEdit ? (
                 <>
-                  {/* Header: HI, USER! */}
+                  {/* Header: HI, USERNAME! */}
                   <div className="mb-3 pl-1">
                     <h3 className="text-white text-lg tracking-widest uppercase drop-shadow-md">
-                      HI, {user?.email?.split('@')[0].toUpperCase() || 'USER'}!
+                      HI, {username}!
                     </h3>
                   </div>
 

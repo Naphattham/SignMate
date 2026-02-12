@@ -6,11 +6,14 @@ export const CATEGORIES: Category[] = [
     title: 'Greetings',
     thaiTitle: 'บทสนทนาทั่วไป',
     description: 'Basic ways to say hello and goodbye.',
-    icon: '👋',
+    icon: '/src/assets/images/dialogue.png',
     levels: [
-      { id: 'lvl_hello', word: 'Hello', thaiWord: 'สวัสดี', description: 'Wave hand near forehead.', difficulty: 'Easy', videoPlaceholderColor: 'bg-blue-500' },
-      { id: 'lvl_thanks', word: 'Thank You', thaiWord: 'ขอบคุณ', description: 'Touch chin and move hand forward.', difficulty: 'Easy', videoPlaceholderColor: 'bg-green-500' },
-      { id: 'lvl_sorry', word: 'Sorry', thaiWord: 'ขอโทษ', description: 'Rub fist in a circle on chest.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500' },
+      { id: 'lvl_hello', word: 'Hello', thaiWord: 'สวัสดี (ผู้ใหญ่ | เพื่อน)', description: 'Wave hand near forehead.', difficulty: 'Easy', videoPlaceholderColor: 'bg-blue-500' },
+      { id: 'lvl_goodbye', word: 'Goodbye', thaiWord: 'ลาก่อน', description: 'Wave hand side to side.', difficulty: 'Easy', videoPlaceholderColor: 'bg-green-500' },
+      { id: 'lvl_howareyou', word: 'How are you?', thaiWord: 'สบายดีไหม?', description: 'Sign for asking about wellbeing.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500' },
+      { id: 'lvl_fine', word: 'Fine', thaiWord: 'สบายดี | ไม่สบายดี', description: 'Sign for good or not good.', difficulty: 'Easy', videoPlaceholderColor: 'bg-teal-500' },
+      { id: 'lvl_eaten', word: 'Have you eaten?', thaiWord: 'กินข้าวแล้วหรือยัง?', description: 'Common greeting question.', difficulty: 'Easy', videoPlaceholderColor: 'bg-cyan-500' },
+      { id: 'lvl_eaten_response', word: 'Eaten', thaiWord: 'กินแล้ว | ยังไม่ได้กิน', description: 'Response about eating.', difficulty: 'Medium', videoPlaceholderColor: 'bg-amber-500' },
     ]
   },
   {
@@ -18,11 +21,13 @@ export const CATEGORIES: Category[] = [
     title: 'Basic Conversation',
     thaiTitle: 'อาการเจ็บป่วย',
     description: 'Essential words for daily chat.',
-    icon: '💬',
+    icon: '/src/assets/images/Pain.png',
     levels: [
-      { id: 'lvl_yes', word: 'Yes', thaiWord: 'ใช่', description: 'Nod your fist like a head.', difficulty: 'Easy', videoPlaceholderColor: 'bg-yellow-500' },
-      { id: 'lvl_no', word: 'No', thaiWord: 'ไม่', description: 'Tap index and middle finger to thumb.', difficulty: 'Easy', videoPlaceholderColor: 'bg-orange-500' },
-      { id: 'lvl_help', word: 'Help', thaiWord: 'ช่วยด้วย', description: 'Fist with thumb up on flat palm, lift up.', difficulty: 'Medium', videoPlaceholderColor: 'bg-purple-500' },
+      { id: 'lvl_cold', word: 'Cold', thaiWord: 'เป็นหวัด', description: 'Sign for having a cold.', difficulty: 'Easy', videoPlaceholderColor: 'bg-yellow-500' },
+      { id: 'lvl_sore_throat', word: 'Sore Throat', thaiWord: 'เจ็บคอ', description: 'Sign for throat pain.', difficulty: 'Easy', videoPlaceholderColor: 'bg-orange-500' },
+      { id: 'lvl_stomachache', word: 'Stomachache', thaiWord: 'ปวดท้อง', description: 'Sign for stomach pain.', difficulty: 'Medium', videoPlaceholderColor: 'bg-purple-500' },
+      { id: 'lvl_headache', word: 'Headache', thaiWord: 'ปวดหัว', description: 'Sign for head pain.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500' },
+      { id: 'lvl_fever', word: 'Fever', thaiWord: 'เป็นไข้', description: 'Sign for having fever.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
     ]
   },
   {
@@ -30,10 +35,13 @@ export const CATEGORIES: Category[] = [
     title: 'Questions',
     thaiTitle: 'คำถาม-คำตอบ',
     description: 'Who, what, where, when, why.',
-    icon: '❓',
+    icon: '/src/assets/images/Question.png',
     levels: [
-      { id: 'lvl_who', word: 'Who', thaiWord: 'ใคร', description: 'Draw a circle with finger around mouth.', difficulty: 'Medium', videoPlaceholderColor: 'bg-indigo-500' },
-      { id: 'lvl_where', word: 'Where', thaiWord: 'ที่ไหน', description: 'Shake index finger side to side.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
+      { id: 'lvl_what', word: 'What', thaiWord: 'อะไร ?', description: 'Sign for asking what.', difficulty: 'Easy', videoPlaceholderColor: 'bg-indigo-500' },
+      { id: 'lvl_howmuch', word: 'How much', thaiWord: 'เท่าไหร่ ?', description: 'Sign for asking how much.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
+      { id: 'lvl_why', word: 'Why', thaiWord: 'ทำไม ?', description: 'Sign for asking why.', difficulty: 'Medium', videoPlaceholderColor: 'bg-purple-500' },
+      { id: 'lvl_yes', word: 'Yes', thaiWord: 'ใช่', description: 'Nod your fist like a head.', difficulty: 'Easy', videoPlaceholderColor: 'bg-green-500' },
+      { id: 'lvl_no', word: 'No', thaiWord: 'ไม่', description: 'Tap index and middle finger to thumb.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500' },
     ]
   },
   {
@@ -41,10 +49,13 @@ export const CATEGORIES: Category[] = [
     title: 'Emotional',
     thaiTitle: 'อารมณ์',
     description: 'Expressing feelings and emotions.',
-    icon: '😊',
+    icon: '/src/assets/images/Emotional.png',
     levels: [
-      { id: 'lvl_who', word: 'Who', thaiWord: 'ใคร', description: 'Draw a circle with finger around mouth.', difficulty: 'Medium', videoPlaceholderColor: 'bg-indigo-500' },
-      { id: 'lvl_where', word: 'Where', thaiWord: 'ที่ไหน', description: 'Shake index finger side to side.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
+      { id: 'lvl_happy', word: 'Happy', thaiWord: 'สบายดี', description: 'Sign for feeling good.', difficulty: 'Easy', videoPlaceholderColor: 'bg-yellow-500' },
+      { id: 'lvl_angry', word: 'Angry', thaiWord: 'โกรธ', description: 'Sign for anger.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500' },
+      { id: 'lvl_love', word: 'Love', thaiWord: 'รัก', description: 'Sign for love.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500' },
+      { id: 'lvl_scared', word: 'Scared', thaiWord: 'กลัว', description: 'Sign for being afraid.', difficulty: 'Easy', videoPlaceholderColor: 'bg-purple-500' },
+      { id: 'lvl_tired', word: 'Tired', thaiWord: 'เหนื่อย', description: 'Sign for being tired.', difficulty: 'Medium', videoPlaceholderColor: 'bg-blue-500' },
     ]
   }
 ];

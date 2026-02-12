@@ -53,3 +53,12 @@ export interface LeaderboardEntry {
   avatar: string;
   rank?: number;
 }
+
+export interface UserProfile {
+  username: string;
+  avatar: string;
+  lastUpdated: string;
+  rank: number;
+  totalScore: number;
+  totalStars: number;
+}

@@ -80,8 +80,13 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
+    setIsPageLoading(true);
     await authHelpers.signOutUser();
-    navigate('/');
+    // Show loading animation for 3 seconds
+    setTimeout(() => {
+      setIsPageLoading(false);
+      navigate('/');
+    }, 3000);
   };
 
   const handleUpdateUsername = async (newUsername: string) => {
@@ -118,7 +123,7 @@ export default function App() {
             <Route path="/categories" element={<Categories userProgress={userProgress} user={user} onLogout={handleLogout} />} />
             
             {/* Level Select for a category */}
-            <Route path="/category/:categoryId" element={<LevelSelect userProgress={userProgress} />} />
+            <Route path="/category/:categoryId" element={<LevelSelect userProgress={userProgress} user={user} onLogout={handleLogout} />} />
             
             {/* Practice Arena */}
             <Route 

@@ -163,3 +163,70 @@ export const authHelpers = {
     return auth.currentUser;
   }
 };
+// User Profile helper functions
+export const profileHelpers = {
+  // Get user profile
+  getUserProfile: async (userId: string) => {
+    return await dbHelpers.readData(`users/${userId}/profile`);
+  },
+
+  // Create or update user profile
+  saveUserProfile: async (userId: string, profileData: any) => {
+    const profile = {
+      ...profileData,
+      lastUpdated: new Date().toLocaleString()
+    };
+    return await dbHelpers.writeData(`users/${userId}/profile`, profile);
+  },
+
+  // Update user stats (score, stars, rank)
+  updateUserStats: async (userId: string, stats: { totalScore?: number; totalStars?: number; rank?: number }) => {
+    const updates = {
+      ...stats,
+      lastUpdated: new Date().toLocaleString()
+    };
+    return await dbHelpers.updateData(`users/${userId}/profile`, updates);
+  },
+
+  // Increment user score
+  incrementScore: async (userId: string, points: number) => {
+    const result = await dbHelpers.readData(`users/${userId}/profile`);
+    if (result.success && result.data) {
+      const currentScore = result.data.totalScore || 0;
+      return await dbHelpers.updateData(`users/${userId}/profile`, {
+        totalScore: currentScore + points,
+        lastUpdated: new Date().toLocaleString()
+      });
+    }
+    return { success: false, error: "Profile not found" };
+  },
+
+  // Increment user stars
+  incrementStars: async (userId: string, stars: number) => {
+    const result = await dbHelpers.readData(`users/${userId}/profile`);
+    if (result.success && result.data) {
+      const currentStars = result.data.totalStars || 0;
+      return await dbHelpers.updateData(`users/${userId}/profile`, {
+        totalStars: currentStars + stars,
+        lastUpdated: new Date().toLocaleString()
+      });
+    }
+    return { success: false, error: "Profile not found" };
+  },
+
+  // Update avatar
+  updateAvatar: async (userId: string, avatar: string) => {
+    return await dbHelpers.updateData(`users/${userId}/profile`, {
+      avatar,
+      lastUpdated: new Date().toLocaleString()
+    });
+  },
+
+  // Update username
+  updateUsername: async (userId: string, username: string) => {
+    return await dbHelpers.updateData(`users/${userId}/profile`, {
+      username,
+      lastUpdated: new Date().toLocaleString()
+    });
+  }
+};

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
+import { dbHelpers, auth } from '../../services/firebase';
+import type { UserProfile } from '../../types';
 
 interface ProfileProps {
   username: string;
@@ -13,13 +15,59 @@ export default function Profile({ username, onUpdateUsername, onLogout }: Profil
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState(username);
   const [selectedAvatar, setSelectedAvatar] = useState('👤');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const avatarOptions = ['👤', '😀', '😎', '🤓', '🥳', '🤩', '😇', '🤠', '🦸', '🧙', '🐱', '🐶', '🦊', '🐼'];
 
-  const handleSave = () => {
+  // Load user profile from Firebase
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const result = await dbHelpers.readData(`users/${currentUser.uid}/profile`);
+        if (result.success && result.data) {
+          setUserProfile(result.data);
+          setNewUsername(result.data.username || username);
+          setSelectedAvatar(result.data.avatar || '👤');
+        } else {
+          // Initialize new profile
+          const initialProfile: UserProfile = {
+            username: username || 'Player',
+            avatar: '👤',
+            lastUpdated: new Date().toLocaleString(),
+            rank: 0,
+            totalScore: 0,
+            totalStars: 0
+          };
+          await dbHelpers.writeData(`users/${currentUser.uid}/profile`, initialProfile);
+          setUserProfile(initialProfile);
+        }
+      }
+      setLoading(false);
+    };
+
+    loadUserProfile();
+  }, [username]);
+
+  const handleSave = async () => {
     if (newUsername.trim()) {
-      onUpdateUsername(newUsername.trim());
-      setIsEditing(false);
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const updatedProfile: UserProfile = {
+          ...userProfile!,
+          username: newUsername.trim(),
+          avatar: selectedAvatar,
+          lastUpdated: new Date().toLocaleString()
+        };
+        
+        const result = await dbHelpers.updateData(`users/${currentUser.uid}/profile`, updatedProfile);
+        if (result.success) {
+          setUserProfile(updatedProfile);
+          onUpdateUsername(newUsername.trim());
+          setIsEditing(false);
+        }
+      }
     }
   };
 
@@ -97,18 +145,25 @@ export default function Profile({ username, onUpdateUsername, onLogout }: Profil
         {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-purple-50 rounded-2xl p-6 text-center border-2 border-purple-100">
-            <div className="text-4xl font-black text-purple-600 mb-2">0</div>
-            <div className="text-sm font-bold text-gray-600 uppercase">Levels Completed</div>
+            <div className="text-4xl font-black text-purple-600 mb-2">{userProfile?.rank || 0}</div>
+            <div className="text-sm font-bold text-gray-600 uppercase">Rank</div>
           </div>
           <div className="bg-yellow-50 rounded-2xl p-6 text-center border-2 border-yellow-100">
-            <div className="text-4xl font-black text-yellow-600 mb-2">0</div>
+            <div className="text-4xl font-black text-yellow-600 mb-2">{userProfile?.totalStars || 0}</div>
             <div className="text-sm font-bold text-gray-600 uppercase">Total Stars</div>
           </div>
           <div className="bg-green-50 rounded-2xl p-6 text-center border-2 border-green-100">
-            <div className="text-4xl font-black text-green-600 mb-2">0</div>
+            <div className="text-4xl font-black text-green-600 mb-2">{userProfile?.totalScore || 0}</div>
             <div className="text-sm font-bold text-gray-600 uppercase">Score</div>
           </div>
         </div>
+
+        {/* Last Updated */}
+        {userProfile?.lastUpdated && (
+          <div className="text-center text-sm text-gray-500 mb-4">
+            Last updated: {userProfile.lastUpdated}
+          </div>
+        )}
 
         {/* Logout Button */}
         <div className="flex justify-end">

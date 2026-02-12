@@ -34,7 +34,7 @@ export default function Categories({ userProgress, user, onLogout }: CategoriesP
         />
 
         {/* Grid เมนู */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 mt-20">
           
           {CATEGORIES.map((cat) => (
             <MenuCard
@@ -72,8 +72,8 @@ const MenuCard = ({ icon, title, onClick }: MenuCardProps) => {
       "
     >
       {/* Icon วงกลมหรือรูปภาพ */}
-      <div className="transform scale-150 md:scale-[2.0]">
-        {icon}
+      <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
+        <img src={icon} alt={title} className="w-full h-full object-contain" />
       </div>
       
       {/* Text */}

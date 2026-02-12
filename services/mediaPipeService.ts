@@ -162,7 +162,15 @@ export class MediaPipeService {
   }
 
   /**
-   * หยุดการตรวจจับ
+   * หยุดการตรวจจับแต่ไม่ปิดกล้อง
+   */
+  stopStreaming(): void {
+    this.isActive = false;
+    this.detectionCount = 0;
+  }
+
+  /**
+   * หยุดการตรวจจับและปิดกล้อง
    */
   stop(): void {
     this.isActive = false;

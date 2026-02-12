@@ -117,82 +117,136 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
         <Navbar 
           totalStars={totalStars}
           user={{ email: user.email } as any}
-          showBackButton={true}
-          onBack={() => navigate(-1)}
         />
 
         {/* --- Podium Section --- */}
-        <div className="flex items-end justify-center mt-2 mb-4 pb-1">
-          {/* เรียงลำดับการ Render ให้แสดงผลถูกต้อง: ที่ 2, ที่ 1, ที่ 3 */}
-          {top3.length > 1 && renderPodiumPlace(top3[1], 2)}
-          {top3.length > 0 && renderPodiumPlace(top3[0], 1)}
-          {top3.length > 2 && renderPodiumPlace(top3[2], 3)}
+        <div className="relative">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="
+              group
+              absolute left-0 top-0
+              flex items-center gap-3
+              px-5 py-2
+              bg-[#d1bbf9] 
+              rounded-2xl 
+              shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] 
+              hover:translate-x-[2px] hover:translate-y-[2px] 
+              hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] 
+              active:translate-x-[5px] active:translate-y-[5px] 
+              active:shadow-none
+              transition-all duration-200
+            "
+          >
+            {/* Icon Wrapper (Black Circle) */}
+            <div className="flex items-center justify-center w-10 h-10 bg-black rounded-xl">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={4} 
+                stroke="#d1bbf9"
+                className="w-6 h-6"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+              </svg>
+            </div>
+
+            {/* Text */}
+            <span className="text-black font-bold text-lg tracking-wide pt-1">
+              ย้อนกลับ
+            </span>
+          </button>
+
+          <div className="flex items-end justify-center mt-8 mb-4 pb-1">
+            {/* เรียงลำดับการ Render ให้แสดงผลถูกต้อง: ที่ 2, ที่ 1, ที่ 3 */}
+            {top3.length > 1 && renderPodiumPlace(top3[1], 2)}
+            {top3.length > 0 && renderPodiumPlace(top3[0], 1)}
+            {top3.length > 2 && renderPodiumPlace(top3[2], 3)}
+          </div>
         </div>
 
         {/* --- List Section --- */}
-        <div className="flex-1 bg-[#EF9C92] rounded-[20px] p-3 shadow-inner relative flex flex-col overflow-hidden border-2 border-[#E58B80] min-h-0">
-
+        <div className="flex-1 bg-[#EFA49A] rounded-[20px] p-2 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] relative flex flex-col overflow-hidden border-2 border-[#E58B80] min-h-[290px] max-w-4xl mx-auto w-full">
+          
           {/* Scrollable Area */}
-          <div className="overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar flex-1 space-y-2">
+          <div className="overflow-y-auto overflow-x-hidden px-2 custom-scrollbar flex-1 space-y-3 py-2">
             {rest.map((player) => {
+              // ตรวจสอบว่าเป็น User ปัจจุบันหรือไม่
               const isCurrentUser = player.username === currentUser.username;
-              
+
               return (
-                <div 
-                  key={player.id} 
+                <div
+                  key={player.id}
                   className={`
-                    flex items-center px-4 py-2 rounded-full shadow-sm border-b-2 transition-transform hover:scale-[1.01]
-                    ${isCurrentUser 
-                      ? 'bg-[#F4C65D] border-[#D9AB42]' // สีส้มสำหรับ User ปัจจุบัน
-                      : 'bg-[#FADADD] border-[#E8C1C4]' // สีชมพูสำหรับคนอื่น
+                    flex items-center w-full h-20 px-4 rounded-[20px] shadow-sm transition-transform hover:scale-[1.01]
+                    ${
+                      isCurrentUser
+                        ? "bg-[#F4C15B]" // สีส้มสำหรับ User ปัจจุบัน (เหมือนในรูป)
+                        : "bg-[#F9E3E3]" // สีชมพูอ่อนสำหรับคนอื่น (เหมือนในรูป)
                     }
                   `}
                 >
-                  {/* Rank */}
-                  <div className="w-8 font-black text-black text-lg font-mono">
+                  {/* Rank Number (Pixel Style) */}
+                  <div className="w-12 font-pixel text-4xl text-black flex justify-start">
                     {player.rank}
                   </div>
 
                   {/* Avatar */}
+                  {/* ในรูป Avatar เป็นวงกลมที่มีพื้นหลังสีสดใส */}
                   <div className={`
-                    w-9 h-9 rounded-full flex items-center justify-center text-base mr-3 border-2
-                    ${isCurrentUser ? 'bg-orange-100 border-orange-300' : 'bg-pink-100 border-pink-300'}
+                    w-12 h-12 rounded-full flex-shrink-0 mr-4 overflow-hidden border-2 border-white/30
+                    ${isCurrentUser ? 'bg-[#E0A040]' : 'bg-[#EF9C92]'} 
                   `}>
-                    {player.avatar}
+                     {/* ใส่รูปภาพ Avatar ตรงนี้ */}
+                     <img 
+                       src={player.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + player.username} 
+                       alt="avatar" 
+                       className="w-full h-full object-cover" 
+                     />
                   </div>
 
-                  {/* Name */}
-                  <div className="flex-1">
-                    <div className="font-bold text-black text-sm font-mono tracking-wide uppercase">
+                  {/* Username */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-pixel text-xl md:text-2xl text-black tracking-widest uppercase truncate pt-1">
                       {player.username}
                     </div>
                   </div>
 
                   {/* Score */}
-                  <div className="font-black text-black text-base font-mono">
+                  <div className="font-pixel text-xl md:text-2xl text-black whitespace-nowrap pt-1">
                     {player.score} PTS
                   </div>
                 </div>
               );
             })}
           </div>
-          
-          {/* Scrollbar CSS Customization */}
+
+          {/* Scrollbar CSS Customization (Retro Style) */}
           <style>{`
+            .font-pixel {
+              /* อย่าลืม import ฟอนต์ Pixel เช่น 'Press Start 2P' หรือ 'VT323' มาใช้นะครับ */
+              font-family: 'VT323', monospace; 
+            }
+
+            /* Scrollbar Track */
             .custom-scrollbar::-webkit-scrollbar {
-              width: 8px;
+              width: 12px;
             }
             .custom-scrollbar::-webkit-scrollbar-track {
-              background: rgba(0,0,0,0.1);
-              border-radius: 10px;
-              margin: 10px 0;
+              background: #D67E73; /* สีแดงเข้มขึ้นมาหน่อย */
+              border-radius: 4px;
+              margin: 4px;
             }
+            /* Scrollbar Thumb (ตัวเลื่อน) */
             .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(0,0,0,0.3);
-              border-radius: 10px;
+              background: #333333; /* สีดำ/เทาเข้ม แบบในรูป */
+              border-radius: 4px;
+              border: 2px solid #D67E73; /* ขอบเพื่อให้ดูมีมิติ */
             }
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: rgba(0,0,0,0.5);
+              background: #000000;
             }
           `}</style>
 
