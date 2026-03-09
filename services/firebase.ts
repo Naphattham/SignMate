@@ -1,7 +1,22 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getDatabase, ref, set, get, update, remove, onValue } from "firebase/database";
+import { 
+  getFirestore, 
+  doc, 
+  collection, 
+  setDoc, 
+  getDoc, 
+  getDocs,
+  updateDoc, 
+  deleteDoc, 
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp
+} from "firebase/firestore";
 import { 
   getAuth, 
   createUserWithEmailAndPassword,
@@ -30,7 +45,7 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 const analytics = getAnalytics(app);
-const database = getDatabase(app);
+const db = getFirestore(app);
 const auth = getAuth(app);
 
 // Initialize Google Auth Provider
@@ -40,25 +55,32 @@ const googleProvider = new GoogleAuthProvider();
 export { 
   app, 
   analytics, 
-  database, 
+  db, 
   auth,
   googleProvider,
-  ref,
-  set,
-  get,
-  update,
-  remove,
-  onValue,
+  doc,
+  collection,
+  setDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp,
   onAuthStateChanged,
   type User
 };
 
 // Helper functions for database operations
 export const dbHelpers = {
-  // Write data to a specific path
-  writeData: async (path: string, data: any) => {
+  // Write data to a specific document
+  writeData: async (collectionPath: string, docId: string, data: any, merge: boolean = false) => {
     try {
-      await set(ref(database, path), data);
+      await setDoc(doc(db, collectionPath, docId), data, { merge });
       return { success: true };
     } catch (error) {
       console.error("Error writing data:", error);
@@ -66,12 +88,12 @@ export const dbHelpers = {
     }
   },
 
-  // Read data from a specific path
-  readData: async (path: string) => {
+  // Read data from a specific document
+  readData: async (collectionPath: string, docId: string) => {
     try {
-      const snapshot = await get(ref(database, path));
-      if (snapshot.exists()) {
-        return { success: true, data: snapshot.val() };
+      const docSnap = await getDoc(doc(db, collectionPath, docId));
+      if (docSnap.exists()) {
+        return { success: true, data: docSnap.data() };
       } else {
         return { success: false, message: "No data available" };
       }
@@ -81,10 +103,10 @@ export const dbHelpers = {
     }
   },
 
-  // Update specific fields at a path
-  updateData: async (path: string, updates: any) => {
+  // Update specific fields in a document
+  updateData: async (collectionPath: string, docId: string, updates: any) => {
     try {
-      await update(ref(database, path), updates);
+      await updateDoc(doc(db, collectionPath, docId), updates);
       return { success: true };
     } catch (error) {
       console.error("Error updating data:", error);
@@ -92,10 +114,10 @@ export const dbHelpers = {
     }
   },
 
-  // Delete data at a specific path
-  deleteData: async (path: string) => {
+  // Delete a document
+  deleteData: async (collectionPath: string, docId: string) => {
     try {
-      await remove(ref(database, path));
+      await deleteDoc(doc(db, collectionPath, docId));
       return { success: true };
     } catch (error) {
       console.error("Error deleting data:", error);
@@ -103,12 +125,27 @@ export const dbHelpers = {
     }
   },
 
-  // Listen to real-time updates at a path
-  listenToData: (path: string, callback: (data: any) => void) => {
-    const dataRef = ref(database, path);
-    return onValue(dataRef, (snapshot) => {
-      callback(snapshot.val());
+  // Listen to real-time updates on a document
+  listenToData: (collectionPath: string, docId: string, callback: (data: any) => void) => {
+    const docRef = doc(db, collectionPath, docId);
+    return onSnapshot(docRef, (docSnap) => {
+      callback(docSnap.exists() ? docSnap.data() : null);
     });
+  },
+
+  // Get all documents from a collection
+  getCollection: async (collectionPath: string) => {
+    try {
+      const querySnapshot = await getDocs(collection(db, collectionPath));
+      const data: any[] = [];
+      querySnapshot.forEach((doc) => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error getting collection:", error);
+      return { success: false, error };
+    }
   }
 };
 
@@ -167,35 +204,35 @@ export const authHelpers = {
 export const profileHelpers = {
   // Get user profile
   getUserProfile: async (userId: string) => {
-    return await dbHelpers.readData(`users/${userId}/profile`);
+    return await dbHelpers.readData('users', userId);
   },
 
   // Create or update user profile
   saveUserProfile: async (userId: string, profileData: any) => {
     const profile = {
       ...profileData,
-      lastUpdated: new Date().toLocaleString()
+      lastUpdated: Timestamp.now()
     };
-    return await dbHelpers.writeData(`users/${userId}/profile`, profile);
+    return await dbHelpers.writeData('users', userId, profile, true);
   },
 
   // Update user stats (score, stars, rank)
   updateUserStats: async (userId: string, stats: { totalScore?: number; totalStars?: number; rank?: number }) => {
     const updates = {
       ...stats,
-      lastUpdated: new Date().toLocaleString()
+      lastUpdated: Timestamp.now()
     };
-    return await dbHelpers.updateData(`users/${userId}/profile`, updates);
+    return await dbHelpers.updateData('users', userId, updates);
   },
 
   // Increment user score
   incrementScore: async (userId: string, points: number) => {
-    const result = await dbHelpers.readData(`users/${userId}/profile`);
+    const result = await dbHelpers.readData('users', userId);
     if (result.success && result.data) {
       const currentScore = result.data.totalScore || 0;
-      return await dbHelpers.updateData(`users/${userId}/profile`, {
+      return await dbHelpers.updateData('users', userId, {
         totalScore: currentScore + points,
-        lastUpdated: new Date().toLocaleString()
+        lastUpdated: Timestamp.now()
       });
     }
     return { success: false, error: "Profile not found" };
@@ -203,12 +240,12 @@ export const profileHelpers = {
 
   // Increment user stars
   incrementStars: async (userId: string, stars: number) => {
-    const result = await dbHelpers.readData(`users/${userId}/profile`);
+    const result = await dbHelpers.readData('users', userId);
     if (result.success && result.data) {
       const currentStars = result.data.totalStars || 0;
-      return await dbHelpers.updateData(`users/${userId}/profile`, {
+      return await dbHelpers.updateData('users', userId, {
         totalStars: currentStars + stars,
-        lastUpdated: new Date().toLocaleString()
+        lastUpdated: Timestamp.now()
       });
     }
     return { success: false, error: "Profile not found" };
@@ -216,17 +253,17 @@ export const profileHelpers = {
 
   // Update avatar
   updateAvatar: async (userId: string, avatar: string) => {
-    return await dbHelpers.updateData(`users/${userId}/profile`, {
+    return await dbHelpers.updateData('users', userId, {
       avatar,
-      lastUpdated: new Date().toLocaleString()
+      lastUpdated: Timestamp.now()
     });
   },
 
   // Update username
   updateUsername: async (userId: string, username: string) => {
-    return await dbHelpers.updateData(`users/${userId}/profile`, {
+    return await dbHelpers.updateData('users', userId, {
       username,
-      lastUpdated: new Date().toLocaleString()
+      lastUpdated: Timestamp.now()
     });
   }
 };

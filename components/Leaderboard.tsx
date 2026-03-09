@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { LeaderboardEntry } from '../types';
 import { MOCK_LEADERBOARD } from '../constants';
 import { Navbar } from './Navbar';
+import { type User as FirebaseUser } from '../services/firebase';
 
 interface LeaderboardProps {
   currentUser: LeaderboardEntry;
+  user: FirebaseUser | null;
+  onLogout?: () => void;
+  userProgress?: { stars: Record<string, number> };
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onLogout, userProgress }) => {
   const navigate = useNavigate();
 
-  // Mock data for demo
-  const user = { email: currentUser.username + '@example.com' };
-  const totalStars = currentUser.score;
+  // Calculate total stars
+  const totalStars = userProgress ? Object.values(userProgress.stars).reduce((a: number, b: number) => a + b, 0) : currentUser.score;
 
   // 1. Logic รวมข้อมูล Mock กับ User ปัจจุบัน
   const allPlayers = [...MOCK_LEADERBOARD];
@@ -116,7 +119,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser }) => {
         
         <Navbar 
           totalStars={totalStars}
-          user={{ email: user.email } as any}
+          user={user}
+          onLogout={onLogout}
         />
 
         {/* --- Podium Section --- */}

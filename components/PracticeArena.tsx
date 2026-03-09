@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Level, FeedbackData } from '../types';
+import { Level, FeedbackData, UserProgress } from '../types';
 import { MediaPipeService } from '../services/mediaPipeService';
 import { getPrediction, PredictionResult } from '../services/predictionService';
 import { Button } from './Button';
 import { StarRating } from './StarRating';
 import { Navbar } from './Navbar';
+import { type User as FirebaseUser } from '../services/firebase';
 import dialogueIcon from '/src/assets/images/dialogue.png';
 import emotionalIcon from '/src/assets/images/emotional.png';
 import painIcon from '/src/assets/images/pain.png';
@@ -53,9 +54,12 @@ interface PracticeArenaProps {
   categoryId?: string;
   onBack: () => void;
   onComplete: (stars: number) => void;
+  user: FirebaseUser | null;
+  userProgress: UserProgress;
+  onLogout?: () => void;
 }
 
-export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, categoryId, onBack, onComplete }) => {
+export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, categoryId, onBack, onComplete, user, userProgress, onLogout }) => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -233,7 +237,11 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, categoryId,
 
       {/* การ์ดหลักสีครีม */}
       <div className="relative bg-[#FFF9F0] w-full max-w-7xl aspect-[16/10] md:aspect-video rounded-[3rem] border-2 border-black shadow-2xl p-8 md:p-12 overflow-hidden">
-        <Navbar />
+        <Navbar 
+          totalStars={Object.values(userProgress.stars).reduce((a: number, b: number) => a + b, 0)}
+          user={user}
+          onLogout={onLogout}
+        />
        
         {/* Navigation Bar (Purple Section) */}
         <div className="w-full max-w-[1200px] mx-auto mb-2">

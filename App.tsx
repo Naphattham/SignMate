@@ -43,7 +43,7 @@ export default function App() {
       
       if (firebaseUser) {
         // Load user progress from Firebase
-        const result = await dbHelpers.readData(`users/${firebaseUser.uid}/progress`);
+        const result = await dbHelpers.readData(`users/${firebaseUser.uid}/data`, 'progress');
         if (result.success && result.data) {
           setUserProgress(result.data);
         } else {
@@ -54,7 +54,7 @@ export default function App() {
             badges: [],
             totalScore: 0
           };
-          await dbHelpers.writeData(`users/${firebaseUser.uid}/progress`, initialProgress);
+          await dbHelpers.writeData(`users/${firebaseUser.uid}/data`, 'progress', initialProgress);
           setUserProgress(initialProgress);
         }
       } else {
@@ -91,7 +91,7 @@ export default function App() {
 
   const handleUpdateUsername = async (newUsername: string) => {
     if (user) {
-      await dbHelpers.writeData(`users/${user.uid}/username`, newUsername);
+      await dbHelpers.updateData('users', user.uid, { username: newUsername });
     }
   };
 
@@ -128,11 +128,11 @@ export default function App() {
             {/* Practice Arena */}
             <Route 
               path="/practice/:categoryId/:levelId" 
-              element={<Practice user={user} userProgress={userProgress} setUserProgress={setUserProgress} />} 
+              element={<Practice user={user} userProgress={userProgress} setUserProgress={setUserProgress} onLogout={handleLogout} />} 
             />
             
             {/* Leaderboard */}
-            <Route path="/leaderboard" element={<LeaderboardPage user={user} userProgress={userProgress} />} />
+            <Route path="/leaderboard" element={<LeaderboardPage user={user} userProgress={userProgress} onLogout={handleLogout} />} />
             
             {/* Profile */}
             <Route 

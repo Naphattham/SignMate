@@ -9,9 +9,10 @@ interface PracticeProps {
   user: User | null;
   userProgress: UserProgress;
   setUserProgress: (progress: UserProgress) => void;
+  onLogout?: () => void;
 }
 
-export default function Practice({ user, userProgress, setUserProgress }: PracticeProps) {
+export default function Practice({ user, userProgress, setUserProgress, onLogout }: PracticeProps) {
   const navigate = useNavigate();
   const { categoryId, levelId } = useParams<{ categoryId: string; levelId: string }>();
 
@@ -76,7 +77,7 @@ export default function Practice({ user, userProgress, setUserProgress }: Practi
 
     // Save to Firebase
     if (user) {
-      await dbHelpers.writeData(`users/${user.uid}/progress`, newProgress);
+      await dbHelpers.writeData(`users/${user.uid}/data`, 'progress', newProgress);
     }
     
     setUserProgress(newProgress);
@@ -93,6 +94,9 @@ export default function Practice({ user, userProgress, setUserProgress }: Practi
       categoryId={categoryId}
       onBack={handleBack}
       onComplete={handleLevelComplete}
+      user={user}
+      userProgress={userProgress}
+      onLogout={onLogout}
     />
   );
 }

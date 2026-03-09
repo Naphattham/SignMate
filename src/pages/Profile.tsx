@@ -25,7 +25,7 @@ export default function Profile({ username, onUpdateUsername, onLogout }: Profil
     const loadUserProfile = async () => {
       const currentUser = auth.currentUser;
       if (currentUser) {
-        const result = await dbHelpers.readData(`users/${currentUser.uid}/profile`);
+        const result = await dbHelpers.readData('users', currentUser.uid);
         if (result.success && result.data) {
           setUserProfile(result.data);
           setNewUsername(result.data.username || username);
@@ -40,7 +40,7 @@ export default function Profile({ username, onUpdateUsername, onLogout }: Profil
             totalScore: 0,
             totalStars: 0
           };
-          await dbHelpers.writeData(`users/${currentUser.uid}/profile`, initialProfile);
+          await dbHelpers.writeData('users', currentUser.uid, initialProfile);
           setUserProfile(initialProfile);
         }
       }
@@ -61,7 +61,7 @@ export default function Profile({ username, onUpdateUsername, onLogout }: Profil
           lastUpdated: new Date().toLocaleString()
         };
         
-        const result = await dbHelpers.updateData(`users/${currentUser.uid}/profile`, updatedProfile);
+        const result = await dbHelpers.updateData('users', currentUser.uid, updatedProfile);
         if (result.success) {
           setUserProfile(updatedProfile);
           onUpdateUsername(newUsername.trim());

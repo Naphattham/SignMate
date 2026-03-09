@@ -39,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
 
       try {
-        const result = await dbHelpers.readData(`users/${user.uid}/profile`);
+        const result = await dbHelpers.readData('users', user.uid);
         if (result.success && result.data) {
           setUsername(result.data.username || user?.email?.split('@')[0].toUpperCase() || 'USER');
           setAvatarUrl(result.data.avatar || '');
@@ -101,7 +101,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      console.error('No user UID found');
+      return;
+    }
+
+    console.log('Starting save process for user:', user.uid);
 
     try {
       // Save to Firebase
@@ -111,21 +116,33 @@ export const Navbar: React.FC<NavbarProps> = ({
         lastUpdated: new Date().toISOString()
       };
 
-      const result = await dbHelpers.updateData(`users/${user.uid}/profile`, profileData);
+      console.log('Profile data to save:', profileData);
+      
+      // Try using setDoc directly with merge option
+      const result = await dbHelpers.writeData('users', user.uid, profileData, true);
+      
+      console.log('Save result:', result);
       
       if (result.success) {
+        console.log('Save successful! Dispatching event...');
         // Dispatch event to notify other components
         const event = new CustomEvent('profileUpdated', {
           detail: { userId: user.uid }
         });
         window.dispatchEvent(event);
         
-        setShowProfileEdit(false);
+        // Show success message (optional)
+        alert('บันทึกเรียบร้อยแล้ว!');
       } else {
         console.error('Failed to save profile:', result.error);
+        alert('บันทึกไม่สำเร็จ: ' + (result.error?.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('Error in handleSave:', error);
+      alert('เกิดข้อผิดพลาด: ' + error);
+    } finally {
+      // กลับไปหน้า Dropdown Menu เสมอ (ไม่ว่าจะ save สำเร็จหรือไม่)
+      setShowProfileEdit(false);
     }
   };
 
@@ -240,8 +257,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* --- Dropdown Menu --- */}
           {showProfileMenu && (
             <div 
-              className="absolute right-0 mt-3 w-80 bg-[#F08E88] rounded-[1.2rem] shadow-xl p-4 z-50 animate-fade-in-up origin-top-right border-2 border-white/20"
-              style={{ fontFamily: '"VT323", monospace' }}
+              className="absolute right-0 mt-3 bg-[#F08E88] rounded-[1.2rem] shadow-xl p-4 z-[100] animate-fade-in-up origin-top-right border-2 border-white/20"
+              style={{ 
+                fontFamily: '"VT323", monospace',
+                width: '320px',
+                minWidth: '320px',
+                maxWidth: '320px',
+                boxSizing: 'border-box'
+              }}
             >
               {!showProfileEdit ? (
                 <>
@@ -353,6 +376,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       type="text" 
                       value={username} 
                       onChange={(e) => setUsername(e.target.value)}
+                      maxLength={10}
                       className="w-full px-3 py-2 rounded-xl border-none bg-[#FFF5E6] text-gray-700 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-white/50"
                       style={{ fontFamily: 'monospace' }}
                     />
