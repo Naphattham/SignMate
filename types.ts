@@ -55,8 +55,10 @@ export interface FeedbackData {
 export interface LeaderboardEntry {
   id: string;
   username: string;
-  score: number;
+  score: number; // totalScore from Firestore
+  totalScore?: number; // Optional: keep both for backward compatibility
   avatar: string;
+  photoURL?: string; // Google profile photo URL
   rank?: number;
 }
 

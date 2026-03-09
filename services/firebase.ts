@@ -27,6 +27,13 @@ import {
   onAuthStateChanged,
   User
 } from "firebase/auth";
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL,
+  deleteObject
+} from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -47,6 +54,7 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 // Initialize Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
@@ -57,6 +65,7 @@ export {
   analytics, 
   db, 
   auth,
+  storage,
   googleProvider,
   doc,
   collection,
@@ -72,6 +81,10 @@ export {
   limit,
   Timestamp,
   onAuthStateChanged,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
   type User
 };
 
@@ -146,7 +159,89 @@ export const dbHelpers = {
       console.error("Error getting collection:", error);
       return { success: false, error };
     }
+  },
+
+  // Upload image to Firebase Storage and return download URL
+  uploadImage: async (file: File, path: string) => {
+    try {
+      // Compress image if it's too large
+      const compressedFile = await compressImage(file, 800, 0.8);
+      
+      const storageRef = ref(storage, path);
+      const snapshot = await uploadBytes(storageRef, compressedFile);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      return { success: true, url: downloadURL };
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return { success: false, error };
+    }
+  },
+
+  // Delete image from Firebase Storage
+  deleteImage: async (path: string) => {
+    try {
+      const storageRef = ref(storage, path);
+      await deleteObject(storageRef);
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      return { success: false, error };
+    }
   }
+};
+
+// Helper function to compress images before upload
+const compressImage = (file: File, maxWidth: number, quality: number): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxWidth) {
+            width *= maxWidth / height;
+            height = maxWidth;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Canvas to Blob conversion failed'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
 };
 
 // Authentication helper functions
@@ -265,5 +360,38 @@ export const profileHelpers = {
       username,
       lastUpdated: Timestamp.now()
     });
+  },
+
+  // Get all users for leaderboard (sorted by totalScore)
+  getAllUsersForLeaderboard: async () => {
+    try {
+      console.log('🔍 getAllUsersForLeaderboard: Starting query...');
+      const usersCollection = collection(db, 'users');
+      const q = query(usersCollection, orderBy('totalScore', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      console.log('📊 Query completed. Document count:', querySnapshot.size);
+      
+      const users: any[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('👤 User doc:', doc.id, data);
+        users.push({
+          id: doc.id,
+          username: data.username || data.email?.split('@')[0] || 'User',
+          score: data.totalScore || 0, // map totalScore to score for display
+          totalScore: data.totalScore || 0, // keep original for clarity
+          avatar: data.avatar || '',
+          photoURL: data.photoURL || undefined, // เก็บ Google photoURL ด้วย
+          totalStars: data.totalStars || 0
+        });
+      });
+      
+      console.log('✅ Processed users:', users);
+      return { success: true, data: users };
+    } catch (error) {
+      console.error("❌ Error getting users for leaderboard:", error);
+      return { success: false, error };
+    }
   }
 };

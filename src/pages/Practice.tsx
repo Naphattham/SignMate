@@ -77,7 +77,15 @@ export default function Practice({ user, userProgress, setUserProgress, onLogout
 
     // Save to Firebase
     if (user) {
+      // Save progress
       await dbHelpers.writeData(`users/${user.uid}/data`, 'progress', newProgress);
+      
+      // Update user stats in main users collection for leaderboard
+      await dbHelpers.updateData('users', user.uid, {
+        totalScore: newTotalScore,
+        totalStars: totalStars,
+        lastUpdated: new Date().toISOString()
+      });
     }
     
     setUserProgress(newProgress);

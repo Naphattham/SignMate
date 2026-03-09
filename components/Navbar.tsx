@@ -25,8 +25,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [username, setUsername] = useState('USER');
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [avatarUrl, setAvatarUrl] = useState<string>(''); // Custom uploaded avatar from Storage
+  const [photoURL, setPhotoURL] = useState<string>(''); // Google photoURL from Firestore
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // เก็บไฟล์ที่เลือก
+  const [previewUrl, setPreviewUrl] = useState<string>(''); // เก็บ preview URL
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false); // สถานะการอัปโหลด
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,7 +46,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         const result = await dbHelpers.readData('users', user.uid);
         if (result.success && result.data) {
           setUsername(result.data.username || user?.email?.split('@')[0].toUpperCase() || 'USER');
-          setAvatarUrl(result.data.avatar || '');
+          setAvatarUrl(result.data.avatar || ''); // Custom uploaded avatar
+          setPhotoURL(result.data.photoURL || ''); // Google photoURL
         } else {
           // Use email as fallback if no profile exists
           setUsername(user?.email?.split('@')[0].toUpperCase() || 'USER');
@@ -74,10 +79,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   // Get avatar URL with fallback
   const getAvatarUrl = () => {
-    if (avatarUrl) return avatarUrl; // Custom uploaded image from Firebase
-    if (user?.photoURL) return user.photoURL; // Google photo
-    if (user?.email) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`; // Generated
-    return 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'; // Default
+    if (previewUrl) return previewUrl; // แสดง preview ของรูปท้ี่เลือกใหม่
+    
+    // 1. ตรวจสอบว่า avatarUrl เป็น custom uploaded image จริงๆ (จาก Firebase Storage)
+    if (avatarUrl && avatarUrl.startsWith('https://firebasestorage.googleapis.com')) {
+      return avatarUrl;
+    }
+    
+    // 2. ถ้าไม่มี custom avatar ให้ใช้ photoURL จาก Firestore (ที่บันทึกไว้จาก Google)
+    if (photoURL && photoURL.trim() !== '') {
+      return photoURL;
+    }
+    
+    // 3. ถ้าไม่มีทั้ง Firestore ลองใช้ Firebase User photoURL (real-time)
+    if (user?.photoURL) {
+      return user.photoURL;
+    }
+    
+    // 4. ถ้าไม่มีเลย ให้ใช้ generated avatar
+    if (user?.email) {
+      return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
+    }
+    
+    return 'https://api.dicebear.com/7.x/avataaars/svg?seed=User';
   };
 
   const displayAvatar = getAvatarUrl();
@@ -85,9 +109,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // ตรวจสอบขนาดไฟล์ (จำกัดไว้ที่ 5 MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('ไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ที่มีขนาดน้อยกว่า 5 MB');
+        return;
+      }
+
+      // ตรวจสอบประเภทไฟล์
+      if (!file.type.startsWith('image/')) {
+        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+        return;
+      }
+
+      setSelectedFile(file);
+      
+      // สร้าง preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
+        setPreviewUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -107,41 +146,81 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
 
     console.log('Starting save process for user:', user.uid);
+    setUploading(true);
 
     try {
-      // Save to Firebase
+      let finalAvatarUrl = avatarUrl; // ใช้ URL เดิมถ้าไม่มีการเปลี่ยนรูป
+
+      // ถ้ามีการเลือกไฟล์ใหม่ ให้อัปโหลดไปที่ Firebase Storage
+      if (selectedFile) {
+        console.log('Uploading new avatar to Storage...', {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          fileType: selectedFile.type,
+          uploadPath: `avatars/${user.uid}/${Date.now()}_${selectedFile.name}`
+        });
+        const uploadPath = `avatars/${user.uid}/${Date.now()}_${selectedFile.name}`;
+        const uploadResult = await dbHelpers.uploadImage(selectedFile, uploadPath);
+        
+        if (uploadResult.success && uploadResult.url) {
+          finalAvatarUrl = uploadResult.url;
+          console.log('Upload successful! URL:', finalAvatarUrl);
+        } else {
+          console.error('Upload failed:', uploadResult.error);
+          throw uploadResult.error || new Error('Failed to upload image to Storage');
+        }
+      }
+
+      // บันทึกข้อมูลโปรไฟล์ลง Firestore (เก็บแค่ URL)
       const profileData = {
         username: username,
-        avatar: avatarUrl || '',
+        avatar: finalAvatarUrl || '',
         lastUpdated: new Date().toISOString()
       };
 
       console.log('Profile data to save:', profileData);
       
-      // Try using setDoc directly with merge option
       const result = await dbHelpers.writeData('users', user.uid, profileData, true);
       
       console.log('Save result:', result);
       
       if (result.success) {
-        console.log('Save successful! Dispatching event...');
+        console.log('Save successful! Updating local state...');
+        
+        // อัปเดต state ให้ตรงกับที่บันทึก
+        setAvatarUrl(finalAvatarUrl);
+        setSelectedFile(null);
+        setPreviewUrl('');
+        
         // Dispatch event to notify other components
         const event = new CustomEvent('profileUpdated', {
           detail: { userId: user.uid }
         });
         window.dispatchEvent(event);
         
-        // Show success message (optional)
         alert('บันทึกเรียบร้อยแล้ว!');
       } else {
         console.error('Failed to save profile:', result.error);
         alert('บันทึกไม่สำเร็จ: ' + (result.error?.message || 'Unknown error'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in handleSave:', error);
-      alert('เกิดข้อผิดพลาด: ' + error);
+      
+      // แสดง error message ที่มีรายละเอียด
+      let errorMessage = 'เกิดข้อผิดพลาด: ';
+      if (error.code === 'storage/unauthorized') {
+        errorMessage += 'คุณไม่มีสิทธิ์อัปโหลดไฟล์ กรุณาลองใหม่อีกครั้ง';
+      } else if (error.code === 'storage/quota-exceeded') {
+        errorMessage += 'พื้นที่จัดเก็บเต็ม';
+      } else if (error.code === 'storage/invalid-format') {
+        errorMessage += 'รูปแบบไฟล์ไม่ถูกต้อง';
+      } else {
+        errorMessage += error.message || 'ไม่สามารถบันทึกได้';
+      }
+      
+      alert(errorMessage);
     } finally {
-      // กลับไปหน้า Dropdown Menu เสมอ (ไม่ว่าจะ save สำเร็จหรือไม่)
+      setUploading(false);
       setShowProfileEdit(false);
     }
   };
@@ -166,6 +245,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
+    {/* โหลด VT323 Font สำหรับ Dropdown Menu */}
+    <style>
+      {`
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+      `}
+    </style>
+    
     {/* Backdrop Blur Overlay - covers card area only */}
     {showProfileMenu && (
       <div 
@@ -270,7 +356,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <>
                   {/* Header: HI, USERNAME! */}
                   <div className="mb-3 pl-1">
-                    <h3 className="text-white text-lg tracking-widest uppercase drop-shadow-md">
+                    <h3 className="text-white text-2xl tracking-widest uppercase drop-shadow-md">
                       HI, {username}!
                     </h3>
                   </div>
@@ -294,7 +380,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }}
                         />
                       </div>
-                      <span className="text-black text-xl uppercase tracking-wider group-hover:text-white transition-colors">
+                      <span className="text-black text-2xl uppercase tracking-wider group-hover:text-white transition-colors">
                         Profile
                       </span>
                     </button>
@@ -307,7 +393,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="w-7 h-7 flex items-center justify-center">
                         <LogOut className="w-6 h-6 text-black group-hover:text-white transition-colors stroke-[2.5]" />
                       </div>
-                      <span className="text-black text-xl uppercase tracking-wider group-hover:text-white transition-colors">
+                      <span className="text-black text-2xl uppercase tracking-wider group-hover:text-white transition-colors">
                         Log Out
                       </span>
                     </button>
@@ -328,12 +414,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onClick={() => setShowProfileEdit(false)}
                       className="text-white hover:text-black transition-colors"
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                       </svg>
                     </button>
-                    <h2 className="text-white text-base font-bold tracking-wider">PROFILE</h2>
-                    <div className="w-5"></div>
+                    <h2 className="text-white text-xl font-bold tracking-wider">PROFILE</h2>
+                    <div className="w-6"></div>
                   </div>
 
                   {/* Avatar Section */}
@@ -371,13 +457,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Username Input */}
                   <div className="mb-4">
-                    <label className="block text-white text-xs font-bold mb-2 tracking-wider">USERNAME</label>
+                    <label className="block text-white text-sm font-bold mb-2 tracking-wider">USERNAME</label>
                     <input 
                       type="text" 
                       value={username} 
                       onChange={(e) => setUsername(e.target.value)}
                       maxLength={10}
-                      className="w-full px-3 py-2 rounded-xl border-none bg-[#FFF5E6] text-gray-700 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-white/50"
+                      className="w-full px-3 py-2 rounded-xl border-none bg-[#FFF5E6] text-gray-700 text-base font-bold focus:outline-none focus:ring-2 focus:ring-white/50"
                       style={{ fontFamily: 'monospace' }}
                     />
                   </div>
@@ -385,7 +471,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {/* Save Button */}
                   <button 
                     onClick={handleSave}
-                    className="w-full bg-[#EBCFB6] hover:bg-[#D4B89E] text-black font-bold py-2.5 px-4 rounded-xl transition-colors text-sm tracking-wider"
+                    className="w-full bg-[#EBCFB6] hover:bg-[#D4B89E] text-black font-bold py-2.5 px-4 rounded-xl transition-colors text-base tracking-wider"
                   >
                     SAVE
                   </button>

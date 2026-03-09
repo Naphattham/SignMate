@@ -42,6 +42,31 @@ export default function App() {
       setUser(firebaseUser);
       
       if (firebaseUser) {
+        // Create/Update user profile in 'users' collection
+        const userProfileData = {
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          avatar: '', // เริ่มต้นเป็นค่าว่าง ให้ใช้ Google photo จาก photoURL ก่อน
+          photoURL: firebaseUser.photoURL || '', // เก็บ Google photoURL แยกไว้ตลอด
+          email: firebaseUser.email,
+          totalScore: 0,
+          totalStars: 0,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Check if user profile exists
+        const existingProfile = await dbHelpers.readData('users', firebaseUser.uid);
+        if (!existingProfile.success || !existingProfile.data) {
+          // Create new profile
+          await dbHelpers.writeData('users', firebaseUser.uid, userProfileData, true);
+        } else {
+          // Update only photoURL if it exists (preserve custom avatar)
+          if (firebaseUser.photoURL) {
+            await dbHelpers.updateData('users', firebaseUser.uid, {
+              photoURL: firebaseUser.photoURL
+            });
+          }
+        }
+        
         // Load user progress from Firebase
         const result = await dbHelpers.readData(`users/${firebaseUser.uid}/data`, 'progress');
         if (result.success && result.data) {

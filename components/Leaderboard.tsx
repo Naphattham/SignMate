@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LeaderboardEntry } from '../types';
-import { MOCK_LEADERBOARD } from '../constants';
 import { Navbar } from './Navbar';
-import { type User as FirebaseUser } from '../services/firebase';
+import { type User as FirebaseUser, profileHelpers } from '../services/firebase';
 
 interface LeaderboardProps {
   currentUser: LeaderboardEntry;
@@ -14,17 +13,69 @@ interface LeaderboardProps {
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onLogout, userProgress }) => {
   const navigate = useNavigate();
+  const [users, setUsers] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Calculate total stars
   const totalStars = userProgress ? Object.values(userProgress.stars).reduce((a: number, b: number) => a + b, 0) : currentUser.score;
 
-  // 1. Logic รวมข้อมูล Mock กับ User ปัจจุบัน
-  const allPlayers = [...MOCK_LEADERBOARD];
-  if (!allPlayers.find(p => p.username === currentUser.username)) {
-    allPlayers.push(currentUser);
+  // Fetch all users from Firestore
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      console.log('🔍 Fetching users for leaderboard...');
+      const result = await profileHelpers.getAllUsersForLeaderboard();
+      console.log('📊 Leaderboard result:', result);
+      if (result.success && result.data) {
+        console.log('✅ Users loaded:', result.data.length, 'users');
+        console.log('👥 Users data:', result.data);
+        setUsers(result.data);
+      } else {
+        console.error('❌ Failed to load users:', result.error);
+      }
+      setLoading(false);
+    };
+    
+    fetchUsers();
+
+    // Listen for profile updates to refresh leaderboard
+    const handleProfileUpdate = () => {
+      console.log('🔄 Profile updated, refreshing leaderboard...');
+      fetchUsers();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
+  // 1. Logic รวมข้อมูล Users จาก Database กับ User ปัจจุบัน
+  const allPlayers = [...users];
+  
+  // ใช้ id ในการเช็คแทน username เพื่อป้องกัน duplicate
+  const currentUserIndex = allPlayers.findIndex(p => p.id === currentUser.id);
+  
+  console.log('🔍 Current User:', currentUser);
+  console.log('📊 Total Stars:', totalStars);
+  console.log('👤 Current User Index in DB:', currentUserIndex);
+  
+  if (currentUserIndex === -1) {
+    // ถ้ายังไม่มี current user ใน list ให้เพิ่มเข้าไป พร้อม update score เป็น totalStars
+    console.log('➕ Adding current user with totalStars:', totalStars);
+    allPlayers.push({ ...currentUser, score: totalStars });
   } else {
-    const idx = allPlayers.findIndex(p => p.username === currentUser.username);
-    allPlayers[idx] = currentUser;
+    // ถ้ามีแล้ว ให้ใช้ score จาก database (เพราะเป็นแหล่งความจริง)
+    // แต่อัปเดตข้อมูลอื่นๆ เช่น username, avatar
+    console.log('🔄 User exists in DB with score:', allPlayers[currentUserIndex].score);
+    allPlayers[currentUserIndex] = {
+      ...allPlayers[currentUserIndex],
+      username: currentUser.username,
+      avatar: currentUser.avatar,
+      photoURL: currentUser.photoURL,
+      // ใช้ score จาก database เป็นหลัก
+    };
   }
 
   // 2. Sort คะแนนจากมากไปน้อย
@@ -34,6 +85,30 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onL
 
   const top3 = sortedPlayers.slice(0, 3);
   const rest = sortedPlayers.slice(3);
+
+  // Helper function to get avatar URL
+  const getAvatarUrl = (player: LeaderboardEntry) => {
+    // 1. ถ้ามี avatar URL จาก Firebase Storage (อัปโหลดเอง) ให้ใช้อันนี้ก่อน
+    if (player.avatar && 
+        typeof player.avatar === 'string' && 
+        player.avatar.trim() !== '' &&
+        player.avatar.startsWith('https://firebasestorage.googleapis.com')) {
+      console.log(`✅ Using custom uploaded avatar for ${player.username}:`, player.avatar.substring(0, 50) + '...');
+      return player.avatar;
+    }
+    
+    // 2. ถ้าไม่มี ให้ใช้ Google photoURL (สำหรับคนที่ login ด้วย Google)
+    if (player.photoURL && 
+        typeof player.photoURL === 'string' && 
+        player.photoURL.trim() !== '') {
+      console.log(`📸 Using Google photo for ${player.username}:`, player.photoURL.substring(0, 50) + '...');
+      return player.photoURL;
+    }
+    
+    // 3. ถ้าไม่มีทั้ง 2 อย่าง ให้ใช้ generated avatar
+    console.log(`🔄 Using generated avatar for ${player.username}`);
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`;
+  };
 
   // ---------------------------------------------
   // Helper Component: แท่นรางวัล (Podium)
@@ -74,12 +149,16 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onL
             w-16 h-16 rounded-full border-3 flex items-center justify-center overflow-hidden bg-white
             ${position === 1 ? 'border-yellow-400 w-20 h-20' : 'border-[#A67C52]'}
           `}>
-            {/* ใส่รูป Avatar หรือ Placeholder */}
-            {player.avatar ? (
-              <span className="text-2xl">{player.avatar}</span> 
-            ) : (
-              <div className="w-full h-full bg-gray-200" />
-            )}
+            {/* แสดงรูปภาพ Avatar */}
+            <img 
+              src={getAvatarUrl(player)} 
+              alt={player.username} 
+              className="w-full h-full object-cover" 
+              onError={(e) => {
+                // Fallback if image fails to load
+                (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`;
+              }}
+            />
           </div>
           
           <div className="mt-1 text-center leading-tight">
@@ -111,6 +190,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onL
       </div>
     );
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#D85D5D] p-4 flex items-center justify-center font-sans">
+        <div className="text-white text-2xl font-bold">กำลังโหลด...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#D85D5D] p-4 flex items-center justify-center font-sans">
@@ -177,8 +265,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onL
           {/* Scrollable Area */}
           <div className="overflow-y-auto overflow-x-hidden px-2 custom-scrollbar flex-1 space-y-3 py-2">
             {rest.map((player) => {
-              // ตรวจสอบว่าเป็น User ปัจจุบันหรือไม่
-              const isCurrentUser = player.username === currentUser.username;
+              // ตรวจสอบว่าเป็น User ปัจจุบันหรือไม่ (ใช้ id แทน username)
+              const isCurrentUser = player.id === currentUser.id;
 
               return (
                 <div
@@ -205,9 +293,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ currentUser, user, onL
                   `}>
                      {/* ใส่รูปภาพ Avatar ตรงนี้ */}
                      <img 
-                       src={player.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + player.username} 
+                       src={getAvatarUrl(player)} 
                        alt="avatar" 
                        className="w-full h-full object-cover" 
+                       onError={(e) => {
+                         (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`;
+                       }}
                      />
                   </div>
 

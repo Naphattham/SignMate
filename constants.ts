@@ -1,4 +1,4 @@
-import { Category, Badge, LeaderboardEntry } from './types';
+import { Category, Badge } from './types';
 
 export const CATEGORIES: Category[] = [
   {
@@ -54,7 +54,7 @@ export const CATEGORIES: Category[] = [
       { id: 'lvl_angry', words: ['โกรธ'], thaiWords: ['โกรธ'], description: 'Sign for anger.', difficulty: 'Easy', videoPlaceholderColor: 'bg-red-500', modelLabel: 'angry', tutorialVideoUrl: '/videos/tutorials/emotions/โกรธ.mp4' },
       { id: 'lvl_fear', words: ['กลัว'], thaiWords: ['กลัว'], description: 'Sign for being afraid.', difficulty: 'Easy', videoPlaceholderColor: 'bg-purple-500', modelLabel: 'fear', tutorialVideoUrl: '/videos/tutorials/emotions/กลัว.mp4' },
       { id: 'lvl_love', words: ['รัก'], thaiWords: ['รัก'], description: 'Sign for love.', difficulty: 'Medium', videoPlaceholderColor: 'bg-pink-500', modelLabel: 'love', tutorialVideoUrl: '/videos/tutorials/emotions/รัก.mp4' },
-      { id: 'lvl_unhappy', words: ['เศร้า'], thaiWords: ['ไม่พอใจ / เศร้า'], description: 'Sign for sadness.', difficulty: 'Easy', videoPlaceholderColor: 'bg-gray-500', modelLabel: 'unhappy', tutorialVideoUrl: '/videos/tutorials/emotions/ไม่สบายใจ.mp4' },
+      { id: 'lvl_unhappy', words: ['ไม่สบายใจ'], thaiWords: ['ไม่สบายใจ'], description: 'Sign for sadness.', difficulty: 'Easy', videoPlaceholderColor: 'bg-gray-500', modelLabel: 'unhappy', tutorialVideoUrl: '/videos/tutorials/emotions/ไม่สบายใจ.mp4' },
       { id: 'lvl_tired', words: ['เหนื่อย'], thaiWords: ['เหนื่อย'], description: 'Sign for being tired.', difficulty: 'Medium', videoPlaceholderColor: 'bg-blue-500', modelLabel: 'tired', tutorialVideoUrl: '/videos/tutorials/emotions/เหนื่อย.mp4' },
     ]
   }
@@ -65,17 +65,4 @@ export const BADGES: Badge[] = [
   { id: 'badge_3_stars', title: 'Perfectionist', description: 'Get 3 stars on any level.', icon: '🌟' },
   { id: 'badge_collector', title: 'Collector', description: 'Unlock 3 different levels.', icon: '🎒' },
   { id: 'badge_master', title: 'Sign Master', description: 'Earn 10 total stars.', icon: '👑' },
-];
-
-export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { id: 'u1', username: 'SignPro_Max', score: 250, avatar: '🦁' },
-  { id: 'u2', username: 'LilyHands', score: 210, avatar: '🦊' },
-  { id: 'u3', username: 'TechSigner', score: 180, avatar: '🤖' },
-  { id: 'u4', username: 'NewbieJohn', score: 120, avatar: '🐼' },
-  { id: 'u5', username: 'AliceWonder', score: 95, avatar: '🐰' },
-  { id: 'u6', username: 'QuickLearner', score: 85, avatar: '🐯' },
-  { id: 'u7', username: 'SignMaster88', score: 75, avatar: '🐨' },
-  { id: 'u8', username: 'HandTalker', score: 65, avatar: '🐸' },
-  { id: 'u9', username: 'GestureKing', score: 55, avatar: '🐷' },
-  { id: 'u10', username: 'SignBeginner', score: 45, avatar: '🐵' },
 ];
