@@ -101,7 +101,7 @@ export default function LevelSelect({ userProgress, user, onLogout }: LevelSelec
                 <div className="flex flex-col">
                   {/* ใช้ font-pixel และสีดำสนิท */}
                   <h3 className="font-pixel text-3xl md:text-4xl text-black tracking-wide">
-                    {level.thaiWord}
+                    {level.thaiWords.join(' | ')}
                   </h3>
                 </div>
 

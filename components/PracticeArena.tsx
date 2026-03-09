@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Level, FeedbackData } from '../types';
 import { MediaPipeService } from '../services/mediaPipeService';
+import { getPrediction, PredictionResult } from '../services/predictionService';
 import { Button } from './Button';
 import { StarRating } from './StarRating';
 import { Navbar } from './Navbar';
@@ -9,15 +10,30 @@ import dialogueIcon from '/src/assets/images/dialogue.png';
 import emotionalIcon from '/src/assets/images/emotional.png';
 import painIcon from '/src/assets/images/pain.png';
 import questionIcon from '/src/assets/images/question.png';
-import tutorialVideo from '/src/assets/images/video test.mp4';
+
+// ใช้ tutorial video ที่กำหนดไว้ใน level หรือ fallback เป็น default
+const getTutorialVideoUrl = (level: Level, selectedIndex: number = 0, wordIndex: number = 0): string => {
+  // ถ้ามี tutorialVideoUrls
+  if (level.tutorialVideoUrls) {
+    // ถ้าเป็น 2D array (array of arrays)
+    if (Array.isArray(level.tutorialVideoUrls[0])) {
+      const urls2D = level.tutorialVideoUrls as string[][];
+      if (urls2D.length > selectedIndex && urls2D[selectedIndex].length > wordIndex) {
+        return urls2D[selectedIndex][wordIndex];
+      }
+    } else {
+      // ถ้าเป็น 1D array
+      const urls1D = level.tutorialVideoUrls as string[];
+      if (urls1D.length > selectedIndex) {
+        return urls1D[selectedIndex];
+      }
+    }
+  }
+  // ถ้าไม่มี ให้ใช้ tutorialVideoUrl เดี่ยว หรือ fallback
+  return level.tutorialVideoUrl || '';
+};
 
 // Icons components for cleaner JSX
-const BackIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-  </svg>
-);
-
 const VideoIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -34,41 +50,32 @@ const CameraIcon = () => (
 
 interface PracticeArenaProps {
   level: Level;
+  categoryId?: string;
   onBack: () => void;
   onComplete: (stars: number) => void;
 }
 
-export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onComplete }) => {
+export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, categoryId, onBack, onComplete }) => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const tutorialVideoRef = useRef<HTMLVideoElement>(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackData>({ stars: 0, feedback: "พร้อมแล้ว?", passed: false });
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [selectedWordIndex, setSelectedWordIndex] = useState(0);
+  const [currentWordInSequence, setCurrentWordInSequence] = useState(0); // ติดตามว่ากำลังฝึกคำไหนในชุด
   const mediaPipeService = useRef<MediaPipeService | null>(null);
+
+  // เกณฑ์ confidence ขั้นต่ำที่นับว่าถูกต้อง (50% ขึ้นไปได้ 1 ดาว)
+  const MIN_CONFIDENCE_FOR_CORRECT = 0.50;
 
   useEffect(() => {
     mediaPipeService.current = new MediaPipeService();
     return () => {
       mediaPipeService.current?.stop();
-    };
-  }, []);
-
-  // Control tutorial video to loop every 5 seconds
-  useEffect(() => {
-    const video = tutorialVideoRef.current;
-    if (!video) return;
-
-    const handleTimeUpdate = () => {
-      if (video.currentTime >= 5) {
-        video.currentTime = 0;
-        video.play();
-      }
-    };
-
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, []);
 
@@ -100,6 +107,72 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
     setFeedback(data);
   }, []);
 
+  // เมื่อ buffer ครบ 30 เฟรม ส่งไปทำนายที่ Cloud Function (Keras LSTM)
+  const handleBufferReady = useCallback(async (buffer: number[][]) => {
+    if (isPredicting) {
+      return; // ป้องกันเรียกซ้ำ
+    }
+    
+    // Validate buffer before sending
+    if (!buffer || buffer.length !== 30 || buffer[0]?.length !== 1627) {
+      return;
+    }
+
+    setIsPredicting(true);
+    
+    try {
+      // ส่ง expectedLabel ไปที่ backend เพื่อเช็คว่าถูกต้องหรือไม่
+      // ใช้ modelLabels[selectedWordIndex] ถ้ามี หรือใช้ modelLabel ถ้าไม่มี
+      const expectedLabel = (level.modelLabels && level.modelLabels.length > selectedWordIndex 
+        ? level.modelLabels[selectedWordIndex] 
+        : level.modelLabel).toLowerCase().trim();
+      const result = await getPrediction(buffer, expectedLabel, 30000);
+      
+      if (result) {
+        setPrediction(result);
+
+        const predictedLabel = result.label;
+        const confidence = result.confidence;
+        
+        // ถูกต้องเมื่อ Label ตรงกัน และ ความมั่นใจเกิน 50%
+        const isCorrect = (predictedLabel === expectedLabel) && (confidence >= MIN_CONFIDENCE_FOR_CORRECT);
+
+        let stars = 0;
+        let feedbackText = "";
+        let passed = false;
+
+        if (isCorrect) {
+          if (confidence >= 0.90) {
+            stars = 3;
+            feedbackText = `สุดยอด! (${(confidence * 100).toFixed(0)}%)`;
+            passed = true;
+          } else if (confidence >= 0.75) {
+            stars = 2;
+            feedbackText = `ดีมาก! (${(confidence * 100).toFixed(0)}%)`;
+            passed = false;
+          } else {
+            stars = 1;
+            feedbackText = `ถูกต้อง! (${(confidence * 100).toFixed(0)}%)`;
+            passed = false;
+          }
+        } else {
+          stars = 0;
+          feedbackText = "ไม่ถูกต้อง";
+          passed = false;
+        }
+
+        setFeedback({ stars, feedback: feedbackText, passed });
+      } else {
+        setFeedback({ stars: 0, feedback: "ไม่สามารถวิเคราะห์ได้ ลองอีกครั้ง", passed: false });
+      }
+    } catch (err) {
+      console.error("❌ Prediction error:", err);
+      setFeedback({ stars: 0, feedback: "เกิดข้อผิดพลาด กรุณาลองใหม่", passed: false });
+    } finally {
+      setIsPredicting(false);
+    }
+  }, [isPredicting, level.modelLabel, level.modelLabels, selectedWordIndex]);
+
   // Auto-stop detection when achieving 3 stars
   useEffect(() => {
     if (feedback.stars === 3 && isDetecting) {
@@ -114,12 +187,19 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
       mediaPipeService.current?.stopStreaming();
       setIsDetecting(false);
       setFeedback({ stars: 0, feedback: "พร้อมแล้ว?", passed: false });
+      setPrediction(null);
+      setCurrentWordInSequence(0); // รีเซ็ตคำเมื่อหยุด
     } else {
       if (!videoRef.current) return;
       setIsDetecting(true);
       setFeedback({ stars: 0, feedback: "แสดงมือให้เห็น!", passed: false });
+      setCurrentWordInSequence(0); // เริ่มจากคำแรก
+      
       try {
-        await mediaPipeService.current?.connect(level.word, handleFeedback);
+        if (canvasRef.current) {
+          mediaPipeService.current?.setOverlayCanvas(canvasRef.current);
+        }
+        await mediaPipeService.current?.connect(level.words[selectedWordIndex], handleFeedback, handleBufferReady);
         mediaPipeService.current?.startStreaming(videoRef.current);
       } catch (e) {
         console.error(e);
@@ -161,8 +241,6 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
             
             {/* --- ส่วนซ้าย: ปุ่มย้อนกลับ + เส้นคั่น --- */}
             <div className="flex items-center gap-4 shrink-0 pr-6">
-              
-              {/* ปุ่มวงกลมดำ */}
               <button
                 onClick={onBack}
                 className="w-14 h-14 bg-black rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition-transform shrink-0"
@@ -179,42 +257,31 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
                 </svg>
               </button>
 
-              {/* ข้อความ "ย้อนกลับ" */}
               <span className="text-2xl font-black text-black tracking-wide font-thai hidden md:block">
                 ย้อนกลับ
               </span>
 
-              {/* เส้นคั่นแนวตั้ง (Divider) */}
               <div className="w-[3px] h-16 bg-black rounded-full mx-2"></div>
             </div>
 
             {/* --- ส่วนขวา: เมนู 4 อัน --- */}
-            <div className="flex-1 flex items-center justify-around px-2">
-              
-              {/* Item 1 */}
-              <div onClick={() => navigate('/category/cat_greetings')} className="flex flex-col items-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform">
-                <img src={dialogueIcon} alt="dialogue" className="w-14 h-14 object-contain drop-shadow-md" />
-                <h2 className="text-lg font-black text-black font-thai leading-none">บทสนทนาทั่วไป</h2>
+            <div className="flex-1 flex items-center justify-around px-2 gap-1">
+              <div onClick={() => navigate('/category/cat_greetings')} className="flex flex-col items-center gap-1 cursor-pointer hover:-translate-y-1 transition-transform">
+                <img src={dialogueIcon} alt="dialogue" className="w-12 h-12 object-contain drop-shadow-md" />
+                <h2 className="text-xs font-black text-black font-thai leading-none text-center">บทสนทนา</h2>
               </div>
-
-              {/* Item 2 */}
-              <div onClick={() => navigate('/category/cat_basic')} className="flex flex-col items-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform">
-                <img src={painIcon} alt="pain" className="w-14 h-14 object-contain drop-shadow-md" />
-                <h2 className="text-lg font-black text-black font-thai leading-none">อาการเจ็บป่วย</h2>
+              <div onClick={() => navigate('/category/cat_illness')} className="flex flex-col items-center gap-1 cursor-pointer hover:-translate-y-1 transition-transform">
+                <img src={painIcon} alt="illness" className="w-12 h-12 object-contain drop-shadow-md" />
+                <h2 className="text-xs font-black text-black font-thai leading-none text-center">เจ็บป่วย</h2>
               </div>
-
-              {/* Item 3 */}
-              <div onClick={() => navigate('/category/cat_questions')} className="flex flex-col items-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform">
-                <img src={questionIcon} alt="question" className="w-14 h-14 object-contain drop-shadow-md" />
-                <h2 className="text-lg font-black text-black font-thai leading-none">คำถาม-คำตอบ</h2>
+              <div onClick={() => navigate('/category/cat_questions')} className="flex flex-col items-center gap-1 cursor-pointer hover:-translate-y-1 transition-transform">
+                <img src={questionIcon} alt="question" className="w-12 h-12 object-contain drop-shadow-md" />
+                <h2 className="text-xs font-black text-black font-thai leading-none text-center">คำถาม</h2>
               </div>
-
-              {/* Item 4 */}
-              <div onClick={() => navigate('/category/cat_emotional')} className="flex flex-col items-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform">
-                <img src={emotionalIcon} alt="emotional" className="w-14 h-14 object-contain drop-shadow-md" />
-                <h2 className="text-lg font-black text-black font-thai leading-none">อารมณ์</h2>
+              <div onClick={() => navigate('/category/cat_emotional')} className="flex flex-col items-center gap-1 cursor-pointer hover:-translate-y-1 transition-transform">
+                <img src={emotionalIcon} alt="emotional" className="w-12 h-12 object-contain drop-shadow-md" />
+                <h2 className="text-xs font-black text-black font-thai leading-none text-center">อารมณ์</h2>
               </div>
-
             </div>
           </div>
         </div>
@@ -222,9 +289,16 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
         {/* Header Section - Title */}
         <div className="bg-white rounded-2xl p-4 shadow-md mb-2 mt-2 max-w-2xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 font-thai flex flex-wrap justify-center items-center gap-3">
-              <span className="tracking-tight">{level.thaiWord}</span>
-              <span className="text-gray-300 text-2xl md:text-3xl font-light">|</span>
-              <span className="text-yellow-600 font-bold">{level.word}</span>
+              <span className="font-bold flex items-center gap-2">
+                {(level.wordOptions && level.wordOptions.length > selectedWordIndex ? level.wordOptions[selectedWordIndex] : level.words).map((word, idx) => (
+                  <span 
+                    key={idx}
+                    className={idx === currentWordInSequence ? 'text-yellow-600' : 'text-gray-400'}
+                  >
+                    {word}
+                  </span>
+                ))}
+              </span>
           </h1>
         </div>
 
@@ -244,18 +318,35 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
                 <div className="h-[250px] bg-black rounded-2xl flex items-center justify-center relative shadow-inner overflow-hidden">
                     <video 
                         ref={tutorialVideoRef}
-                        src={tutorialVideo}
+                        key={`${selectedWordIndex}-${currentWordInSequence}`}
+                        src={getTutorialVideoUrl(level, selectedWordIndex, currentWordInSequence)}
                         autoPlay
+                        loop
                         muted
                         playsInline
                         className="w-full h-full object-cover rounded-2xl"
                     />
                 </div>
-
-                {/* Instruction Text */}
-                <p className="text-gray-400 text-sm font-medium text-center font-thai">
-                    {level.description}
-                </p>
+                {level.wordOptions && level.wordOptions.length >= 2 && (
+                  <div className="pt-1 flex gap-2">
+                      {level.wordOptions.map((_, index) => (
+                        <button 
+                          key={index}
+                          onClick={() => {
+                            setSelectedWordIndex(index);
+                            setCurrentWordInSequence(0);
+                          }}
+                          className={`flex-1 py-3 rounded-xl font-black shadow-md transition-all active:scale-95 text-sm flex items-center justify-center font-thai ${
+                            selectedWordIndex === index 
+                              ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500' 
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                            {level.buttonLabels?.[index] || level.wordOptions[index].join(' ')}
+                        </button>
+                      ))}
+                  </div>
+                )}
             </div>
 
             {/* Right Column: User Camera */}
@@ -272,19 +363,28 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
                     {cameraError ? (
                         <div className="absolute inset-0 flex items-center rounded-xl justify-center text-white bg-gray-800 font-thai">No Camera</div>
                     ) : (
-                        <video 
-                            ref={videoRef}
-                            autoPlay 
-                            playsInline 
-                            muted 
-                            className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] rounded-lg"
-                        />
+                        <>
+                          <video 
+                              ref={videoRef}
+                              autoPlay 
+                              playsInline 
+                              muted 
+                              className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] rounded-lg"
+                          />
+                          <canvas
+                              ref={canvasRef}
+                              width={640}
+                              height={480}
+                              className="absolute inset-0 w-full h-full rounded-lg pointer-events-none"
+                              style={{ zIndex: 10 }}
+                          />
+                        </>
                     )}
                     
-                    {/* Feedback Overlay */}
+                    {/* Feedback Overlay - แสดงดาวตามความถูกต้อง */}
                     <div className="absolute top-4 right-4 flex flex-col items-center">
                         <StarRating stars={feedback.stars} size="md" />
-                        {feedback.passed && <span className="text-green-400 font-bold bg-black/50 px-2 rounded mt-1 text-sm font-thai">สุดยอด!</span>}
+                        {feedback.passed && <span className="text-green-400 font-bold bg-black/50 px-2 rounded mt-1 text-sm font-thai">ผ่านแล้ว!</span>}
                     </div>
                     
                     {/* Live Badge */}
@@ -292,6 +392,54 @@ export const PracticeArena: React.FC<PracticeArenaProps> = ({ level, onBack, onC
                          <div className="absolute top-4 left-4 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
                             <div className="w-1.5 h-1.5 bg-white rounded-full"></div> LIVE
                          </div>
+                    )}
+
+                    {/* Prediction Result / Loading */}
+                    {isPredicting && !prediction && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400/90 text-black text-xs px-4 py-1.5 rounded-full font-bold font-thai animate-pulse shadow-md">
+                        กำลังเริ่มวิเคราะห์...
+                      </div>
+                    )}
+
+                    {prediction && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 w-full max-w-[90%]">
+                        {prediction.is_correct !== null && prediction.is_correct !== undefined ? (
+                          <div className={`text-sm px-4 py-2 rounded-full font-bold font-thai flex items-center gap-2 shadow-lg transition-colors duration-300 ${
+                            prediction.is_correct 
+                              ? 'bg-green-500/95 text-white' 
+                              : 'bg-red-500/95 text-white'
+                          }`}>
+                            {prediction.is_correct ? (
+                              <>
+                                <span className="text-lg leading-none">✓</span>
+                                <span>ถูกต้อง!</span>
+                                <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full border border-white/20">
+                                  {(prediction.confidence * 100).toFixed(0)}%
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-lg leading-none">✗</span>
+                                <span className="whitespace-nowrap">ไม่ถูกต้อง</span>
+                              </>
+                            )}
+
+                            {/* จุดไข่ปลาเล็กๆ กระพริบตอนกำลังดึงข้อมูลใหม่รอบถัดไป */}
+                            {isPredicting && (
+                               <span className="flex gap-0.5 ml-1">
+                                 <span className="w-1 h-1 bg-white/70 rounded-full animate-bounce"></span>
+                                 <span className="w-1 h-1 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                                 <span className="w-1 h-1 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                               </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="bg-black/80 text-white text-xs px-4 py-1.5 rounded-full font-bold font-thai shadow-md flex items-center gap-2">
+                            รอผลลัพธ์...
+                            {isPredicting && <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>}
+                          </div>
+                        )}
+                      </div>
                     )}
                 </div>
 

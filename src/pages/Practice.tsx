@@ -89,7 +89,8 @@ export default function Practice({ user, userProgress, setUserProgress }: Practi
 
   return (
     <PracticeArena 
-      level={level} 
+      level={level}
+      categoryId={categoryId}
       onBack={handleBack}
       onComplete={handleLevelComplete}
     />

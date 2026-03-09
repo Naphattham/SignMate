@@ -1,0 +1,7 @@
+firebase-functions>=0.1.0
+tensorflow
+tf-keras
+numpy
+pandas
+scikit-learn
+joblib

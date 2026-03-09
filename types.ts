@@ -10,11 +10,17 @@ export enum AppView {
 
 export interface Level {
   id: string;
-  word: string; // The word to sign (e.g., "Hello")
-  thaiWord: string; // Thai translation
+  words: string[]; // Array of words/signs (e.g., ["กิน", "ข้าว", "แล้ว", "ยัง?"])
+  thaiWords: string[]; // Array of Thai translations (could have alternatives with |)
+  wordOptions?: string[][]; // Optional: Array of word arrays for multiple choices (e.g., [["กิน", "แล้ว"], ["ฉัน", "ไม่", "ได้", "กิน"]])
+  buttonLabels?: string[]; // Optional: Labels for buttons in PracticeArena (if different from thaiWords)
   description: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   videoPlaceholderColor: string; // To simulate different videos
+  modelLabel: string; // Label ที่ model ทำนายออกมา (ต้องตรงกับ label_encoder ใน decision_model)
+  modelLabels?: string[]; // Array of model labels (ใช้กับ wordOptions เพื่อเช็คแต่ละตัวเลือก)
+  tutorialVideoUrl?: string; // URL ของวิดีโอสอนท่ามือแต่ละคำ (ถ้ามี)
+  tutorialVideoUrls?: string[] | string[][]; // Array of URLs หรือ 2D array สำหรับหลายวิดีโอ (ใช้กับ wordOptions)
 }
 
 export interface Category {
